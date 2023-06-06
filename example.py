@@ -1,17 +1,14 @@
 import torch
-import torchvision
+from torchvision import datasets, transforms
 import numpy as np
 import pandas as pd
 
 dinov2_vitg14 = torch.hub.load('facebookresearch/dinov2', 'dinov2_vitg14') #load dinov2 model
 
-torchvision.set_video_backend("pyav")
-video_path = "/home/gilnetanel/Desktop/input/basketball.mp4" #data directory path
-video = torchvision.io.VideoReader(video_path, "video")
-frames = []
-for frame in video:
-    frames.append(frame['data'])
-dataloader = torch.utils.data.DataLoader(frames, batch_size=32, shuffle=False)
+data_dir = '/home/gilnetanel/Desktop/images' #data directory path
+transform = transforms.Compose([transforms.Resize(255), transforms.CenterCrop(224), transforms.ToTensor()]) #data transform
+dataset = datasets.ImageFolder(data_dir, transform=transform)
+dataloader = torch.utils.data.DataLoader(dataset, batch_size=1, shuffle=True)
 images, labels = next(iter(dataloader))
 images, labels = images.cuda(), labels.cuda() #move data to cuda
 dinov2_vitg14.cuda() #move model to cuda
