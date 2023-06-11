@@ -2,6 +2,7 @@ import torch
 import torchvision
 import pandas as pd
 import subprocess
+from tqdm import tqdm
 
 # delete current results file
 cmd = 'rm /home/gilnetanel/Desktop/results.csv'
@@ -20,16 +21,17 @@ torch.cuda.empty_cache()
 
 # load dinov2 model (uncomment your desierd model):
 #dinov2_vits14 = torch.hub.load('facebookresearch/dinov2', 'dinov2_vits14')
-dinov2_vitb14 = torch.hub.load('facebookresearch/dinov2', 'dinov2_vitb14')
-#dinov2_vitl14 = torch.hub.load('facebookresearch/dinov2', 'dinov2_vitl14')
+#dinov2_vitb14 = torch.hub.load('facebookresearch/dinov2', 'dinov2_vitb14')
+dinov2_vitl14 = torch.hub.load('facebookresearch/dinov2', 'dinov2_vitl14')
 #dinov2_vitg14 = torch.hub.load('facebookresearch/dinov2', 'dinov2_vitg14')
-dinov2_vitb14.cuda() #move model to cuda
+dinov2_vitl14.cuda() #move model to cuda
+dinov2_vitl14.eval()
 
 # load video and get frames
 torchvision.set_video_backend("pyav")
 video_path = "/home/gilnetanel/Desktop/input/burned_panckake1.mp4"
 video = torchvision.io.VideoReader(video_path, "video")
-for frame in video:
+for frame in tqdm(video):
     frames = []
     resized_frame = torchvision.transforms.functional.resize(frame['data'], [350, 630])
     resized_frame_and_converted_dtype = torchvision.transforms.functional.convert_image_dtype(resized_frame, torch.float32)
@@ -39,7 +41,7 @@ for frame in video:
     dataloader = torch.utils.data.DataLoader(frames, batch_size=1, shuffle=False)
     for image in dataloader:
         image = image.cuda()
-        output = dinov2_vitb14(image) #inference
+        output = dinov2_vitl14(image) #inference
         #save embedding
         output_np = output.cpu().detach().numpy() #convert to Numpy array
         output_df = pd.DataFrame(output_np).transpose() #convert to dataframe
