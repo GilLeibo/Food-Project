@@ -1,8 +1,11 @@
+import math
 import torch
 import torchvision
 import pandas as pd
 import subprocess
 from tqdm import tqdm
+import torchvision.transforms as T
+import torchvision.transforms.functional as F
 
 # delete current results file
 cmd = 'rm /home/gilnetanel/Desktop/results.csv'
@@ -32,22 +35,37 @@ torchvision.set_video_backend("pyav")
 video_path = "/home/gilnetanel/Desktop/input/burned_panckake1.mp4"
 video = torchvision.io.VideoReader(video_path, "video")
 for frame in tqdm(video):
-    frames = []
-    resized_frame = torchvision.transforms.functional.resize(frame['data'], [350, 630])
-    resized_frame_and_converted_dtype = torchvision.transforms.functional.convert_image_dtype(resized_frame, torch.float32)
-    frames.append(resized_frame_and_converted_dtype)
+    # show frame
+    #img = torchvision.transforms.ToPILImage()(frame['data'])
+    #img.show()
 
-    # iterate over images, make inference, and save embeddings to csv file
-    dataloader = torch.utils.data.DataLoader(frames, batch_size=1, shuffle=False)
-    for image in dataloader:
-        image = image.cuda()
-        output = dinov2_vitl14(image) #inference
-        #save embedding
-        output_np = output.cpu().detach().numpy() #convert to Numpy array
-        output_df = pd.DataFrame(output_np).transpose() #convert to dataframe
-        saved_df = pd.read_csv("/home/gilnetanel/Desktop/results.csv", header=0)
-        merged_df = pd.concat([saved_df, output_df], axis=1)
-        merged_df.to_csv("/home/gilnetanel/Desktop/results.csv", index=False)
+    cropped_img = F.crop(img=frame['data'], top=160, left=0, height=192, width=640)
+    #img = torchvision.transforms.ToPILImage()(cropped_img)
+    #img.show()
+
+    # resize frame according to patches size and set dtype
+    patch_size = 14  # as defined in assert in the model
+    resize_height = (math.ceil(cropped_img.size(dim=1)/patch_size))*patch_size
+    resize_width = (math.ceil(cropped_img.size(dim=2)/patch_size))*patch_size
+    transform = torch.nn.Sequential(
+        T.Resize((resize_height, resize_width), antialias=True),
+        T.ConvertImageDtype(torch.float32)
+    )
+    transformed_frame = transform(cropped_img)
+    # show frame
+    #img = torchvision.transforms.ToPILImage()(transformed_frame)
+    #img.show()
+
+    # make inference and save embeddings to csv file
+    ready_frame = torch.unsqueeze(transformed_frame, 0)
+    ready_frame = ready_frame.cuda()
+    output = dinov2_vitl14(ready_frame) #inference
+    #save embedding
+    output_np = output.cpu().detach().numpy() #convert to Numpy array
+    output_df = pd.DataFrame(output_np).transpose() #convert to dataframe
+    saved_df = pd.read_csv("/home/gilnetanel/Desktop/results.csv", header=0)
+    merged_df = pd.concat([saved_df, output_df], axis=1)
+    merged_df.to_csv("/home/gilnetanel/Desktop/results.csv", index=False)
 
 # remove first column and save to Excel file
 saved_df = pd.read_csv("/home/gilnetanel/Desktop/results.csv", header=0)
