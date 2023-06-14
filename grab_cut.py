@@ -1,32 +1,28 @@
 import cv2
-import cv2
 import numpy as np
 
+def get_majority_mask(masks):
+    # Compute the majority mask based on the input list of masks
+    # by summing them element-wise and thresholding the result
+    summed_mask = sum(masks)
+    majority_mask = np.where(summed_mask >= (len(masks) // 2 + 1), 1, 0).astype('uint8')
+    return majority_mask
+
+
+# This function applies GrabCut to a frame using the provided mask
+def apply_grabcut(frame, mask, rect):
+    bgdModel = np.zeros((1, 65), np.float64)
+    fgdModel = np.zeros((1, 65), np.float64)
+
+    cv2.grabCut(frame, mask, rect, bgdModel, fgdModel, 5, cv2.GC_INIT_WITH_RECT)
+
+    mask = np.where((mask == 2) | (mask == 0), 0, 1).astype('uint8')
+    frame = frame * mask[:, :, np.newaxis]
+
+    return frame, mask
+
+
 if __name__ == '__main__':
-
-
-
-
-    def get_majority_mask(masks):
-        # Compute the majority mask based on the input list of masks
-        # by summing them element-wise and thresholding the result
-        summed_mask = sum(masks)
-        majority_mask = np.where(summed_mask >= (len(masks) // 2 + 1), 1, 0).astype('uint8')
-        return majority_mask
-
-
-    # This function applies GrabCut to a frame using the provided mask
-    def apply_grabcut(frame, mask, rect):
-        bgdModel = np.zeros((1, 65), np.float64)
-        fgdModel = np.zeros((1, 65), np.float64)
-
-        cv2.grabCut(frame, mask, rect, bgdModel, fgdModel, 5, cv2.GC_INIT_WITH_RECT)
-
-        mask = np.where((mask == 2) | (mask == 0), 0, 1).astype('uint8')
-        frame = frame * mask[:, :, np.newaxis]
-
-        return frame, mask
-
 
     # Load the video
     cap = cv2.VideoCapture('burned2.mp4')
