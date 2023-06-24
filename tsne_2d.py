@@ -29,11 +29,13 @@ def visualize_video_embedding(embeddings):
     plt.show()
 
 if __name__ == '__main__':
+    # set input file
+    file_name = "pancake1"
 
-    file_path = 'results.xlsx'  # Specify the path to your XLSX file
-    sheet_name = 'Sheet1'  # Specify the name of the sheet in the XLSX file
+    # paths
+    result_excel_path = "/home/gilnetanel/Desktop/results/" + file_name + ".xlsx"
 
-    numpy_array = xlsx_to_numpy(file_path, sheet_name)
+    numpy_array = xlsx_to_numpy(result_excel_path, 'Sheet1')
     print(numpy_array.shape)
 
     visualize_video_embedding(numpy_array)
