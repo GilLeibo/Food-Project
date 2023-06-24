@@ -123,9 +123,9 @@ def add_means_to_embeddings(file_name):
         h, s, v = torch.mean(img_hsv, dim=[1, 2])
         col = df.iloc[:, index]
         for channel_mean in [r, g, b]:
-            col = col.append(pd.Series(channel_mean.numpy()))
+            col = pd.concat([col, pd.Series(channel_mean.numpy())])
         for hsv_mean in [h, s, v]:
-            col = col.append(pd.Series(hsv_mean.numpy()))
+            col = pd.concat([col, pd.Series(hsv_mean.numpy())])
         new_df = pd.concat([new_df, col], axis=1)
 
     # save to Excel file
