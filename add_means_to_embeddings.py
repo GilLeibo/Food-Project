@@ -1,6 +1,7 @@
 import torch
 import torchvision
 import pandas as pd
+from tqdm import tqdm
 
 
 def rgb2hsv_torch(rgb: torch.Tensor) -> torch.Tensor:
@@ -34,7 +35,7 @@ new_df = pd.DataFrame()
 torchvision.set_video_backend("pyav")
 video_path = input_file_path
 video = torchvision.io.VideoReader(video_path, "video")
-for index, frame in enumerate(video):
+for index, frame in enumerate(tqdm(video)):
     img = frame['data'].float()
     img_hsv = torch.squeeze(rgb2hsv_torch(torch.unsqueeze(img, 0)))
     r, g, b = torch.mean(img, dim=[1, 2])
