@@ -8,7 +8,7 @@ import torchvision.transforms as T
 import torchvision.transforms.functional as F
 
 # set input file
-file_name = "pancake1_grabcut"
+file_name = "pancake1"
 
 # paths
 result_csv_path = "/home/gilnetanel/Desktop/results/" + file_name + ".csv"
@@ -47,12 +47,13 @@ torchvision.set_video_backend("pyav")
 video_path = input_file_path
 video = torchvision.io.VideoReader(video_path, "video")
 for frame in tqdm(video):
-    # show frame
+    # show frame:
     # img = torchvision.transforms.ToPILImage()(frame['data'])
     # img.show()
 
-    # TODO: make image cropping generic according to input video
-    cropped_img = F.crop(img=frame['data'], top=160, left=0, height=192, width=640)
+    # crop image if necessary:
+    cropped_img = frame['data']
+    # cropped_img = F.crop(img=frame['data'], top=160, left=0, height=192, width=640)
     # img = torchvision.transforms.ToPILImage()(cropped_img)
     # img.show()
 
@@ -65,7 +66,7 @@ for frame in tqdm(video):
         T.ConvertImageDtype(torch.float32)
     )
     transformed_frame = transform(cropped_img)
-    # show frame
+    # show frame:
     # img = torchvision.transforms.ToPILImage()(transformed_frame)
     # img.show()
 
@@ -85,3 +86,5 @@ saved_df = pd.read_csv(result_csv_path, header=0)
 saved_df.drop(saved_df.columns[0], axis=1, inplace=True)
 saved_df.to_csv(result_csv_path, index=False)
 saved_df.to_excel(result_excel_path, index=None, header=False)
+
+
