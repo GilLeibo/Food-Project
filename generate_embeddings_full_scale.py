@@ -7,7 +7,9 @@ from tqdm import tqdm
 import torchvision.transforms as T
 import torchvision.transforms.functional as F
 
-
+"""
+Generate embeddings with dinov2 model to input video and save to excel file.
+"""
 def generate_embeddings(file_name):
     print("Started to generate embeddings of file name: {} \n".format(file_name))
 
@@ -91,6 +93,9 @@ def generate_embeddings(file_name):
     print("Finished to generate embeddings of file name: {} \n".format(file_name))
 
 
+"""
+Convert input tensor from rgb format to hsv format.
+"""
 def rgb2hsv_torch(rgb: torch.Tensor) -> torch.Tensor:
     cmax, cmax_idx = torch.max(rgb, dim=1, keepdim=True)
     cmin = torch.min(rgb, dim=1, keepdim=True)[0]
@@ -107,6 +112,9 @@ def rgb2hsv_torch(rgb: torch.Tensor) -> torch.Tensor:
     return torch.cat([hsv_h, hsv_s, hsv_v], dim=1)
 
 
+"""
+Add to each embedding vector values of: mean r,g,b and mean h,s,v of the frame tensor.
+"""
 def add_means_to_embeddings(file_name):
     print("Started to add mean values to embeddings of file name: {} \n".format(file_name))
 
@@ -124,9 +132,11 @@ def add_means_to_embeddings(file_name):
     video = torchvision.io.VideoReader(video_path, "video")
     for index, frame in enumerate(tqdm(video)):
         img = frame['data'].float()
-        img_hsv = torch.squeeze(rgb2hsv_torch(torch.unsqueeze(img, 0)))
-        r, g, b = torch.mean(img, dim=[1, 2])
-        h, s, v = torch.mean(img_hsv, dim=[1, 2])
+        img_hsv = torch.squeeze(rgb2hsv_torch(torch.unsqueeze(img, 0)))     # convert img to hsv format
+        r, g, b = torch.mean(img, dim=[1, 2])   # calc mean of r,g,b values from img
+        h, s, v = torch.mean(img_hsv, dim=[1, 2])   # calc mean of h,s,v values from img_hsv
+
+        # add mean values to embedding vector
         col = df.iloc[:, index]
         for channel_mean in [r, g, b]:
             col = pd.concat([col, pd.Series(channel_mean.numpy())])
