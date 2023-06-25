@@ -47,7 +47,7 @@ if __name__ == '__main__':
         mask = np.zeros(frame.shape[:2], np.uint8)
 
         # Define the area of interest (the rectangle around the object to keep)
-        rect = (20, 20, 500, 350)
+        rect = (70, 30, 760, 550)
 
         # Apply GrabCut to the current frame
         frame, mask = apply_grabcut(frame, mask, rect)
