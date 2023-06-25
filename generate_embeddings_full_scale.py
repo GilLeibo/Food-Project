@@ -9,6 +9,8 @@ import torchvision.transforms.functional as F
 
 
 def generate_embeddings(file_name):
+    print("Started to generate embeddings of file name: {} \n".format(file_name))
+
     # paths
     result_csv_path = "/home/gilnetanel/Desktop/results/" + file_name + ".csv"
     result_excel_path = "/home/gilnetanel/Desktop/results/" + file_name + ".xlsx"
@@ -86,6 +88,8 @@ def generate_embeddings(file_name):
     saved_df.to_csv(result_csv_path, index=False)
     saved_df.to_excel(result_excel_path, index=None, header=False)
 
+    print("Finished to generate embeddings of file name: {} \n".format(file_name))
+
 
 def rgb2hsv_torch(rgb: torch.Tensor) -> torch.Tensor:
     cmax, cmax_idx = torch.max(rgb, dim=1, keepdim=True)
@@ -104,6 +108,8 @@ def rgb2hsv_torch(rgb: torch.Tensor) -> torch.Tensor:
 
 
 def add_means_to_embeddings(file_name):
+    print("Started to add mean values to embeddings of file name: {} \n".format(file_name))
+
     # paths
     result_excel_path = "/home/gilnetanel/Desktop/results/" + file_name + ".xlsx"
     input_file_path = "/home/gilnetanel/Desktop/input/" + file_name + ".mp4"
@@ -131,10 +137,16 @@ def add_means_to_embeddings(file_name):
     # save to Excel file
     new_df.to_excel(result_excel_path, index=None, header=False)
 
+    print("Finished to add mean values to embeddings of file name: {} \n".format(file_name))
 
-if __name__ == '__main__':
+
+def main():
     # set input file
-    file_name = "pancake1"
+    input_file = "pancake1"
 
-    generate_embeddings(file_name)
-    add_means_to_embeddings(file_name)
+    generate_embeddings(input_file)
+    add_means_to_embeddings(input_file)
+
+
+if __name__ == "__main__":
+    main()
