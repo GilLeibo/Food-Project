@@ -2,6 +2,7 @@ import math
 import torch
 import torchvision
 import pandas as pd
+import numpy as np
 import subprocess
 from tqdm import tqdm
 import torchvision.transforms as T
@@ -39,13 +40,13 @@ def generate_embeddings(file_name):
 
     # load dinov2 model (uncomment your desierd model):
     # dinov2_vits14 = torch.hub.load('facebookresearch/dinov2', 'dinov2_vits14')
-    # dinov2_vitb14 = torch.hub.load('facebookresearch/dinov2', 'dinov2_vitb14')
-    dinov2_vitl14 = torch.hub.load('facebookresearch/dinov2', 'dinov2_vitl14')
+    dinov2_vitb14 = torch.hub.load('facebookresearch/dinov2', 'dinov2_vitb14')
+    # dinov2_vitl14 = torch.hub.load('facebookresearch/dinov2', 'dinov2_vitl14')
     # dinov2_vitg14 = torch.hub.load('facebookresearch/dinov2', 'dinov2_vitg14')
 
     # move model to cuda
-    dinov2_vitl14.cuda()
-    dinov2_vitl14.eval()
+    dinov2_vitb14.cuda()
+    dinov2_vitb14.eval()
 
     # load video and get frames
     torchvision.set_video_backend("pyav")
@@ -78,7 +79,7 @@ def generate_embeddings(file_name):
         # make inference and save embeddings to csv file
         ready_frame = torch.unsqueeze(transformed_frame, 0)
         ready_frame = ready_frame.cuda()
-        output = dinov2_vitl14(ready_frame)  # inference
+        output = dinov2_vitb14(ready_frame)  # inference
         # save embedding
         output_np = output.cpu().detach().numpy()  # convert to Numpy array
         output_df = pd.DataFrame(output_np).transpose()  # convert to dataframe
@@ -145,9 +146,9 @@ def add_means_to_embeddings(file_name):
         # add mean values to embedding vector
         col = df.iloc[:, index]
         for channel_mean in [r, g, b]:
-            col = pd.concat([col, pd.Series(channel_mean.numpy())])
+            col = pd.concat([col, pd.Series(channel_mean.numpy(), dtype=np.dtype("float"))])
         for hsv_mean in [h, s, v]:
-            col = pd.concat([col, pd.Series(hsv_mean.numpy())])
+            col = pd.concat([col, pd.Series(hsv_mean.numpy(), dtype=np.dtype("float"))])
         new_df = pd.concat([new_df, col], axis=1)
 
     # save to Excel file
@@ -158,7 +159,7 @@ def add_means_to_embeddings(file_name):
 
 def main():
     # set input files
-    input_files = ["pancake1", "egg1", "egg2"]
+    input_files = ["egg1"]
 
     for file in input_files:
         generate_embeddings(file)
