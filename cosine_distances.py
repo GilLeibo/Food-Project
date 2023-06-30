@@ -1,26 +1,18 @@
 import numpy as np
-from sklearn.metrics.pairwise import cosine_distances
 import pandas as pd
-from sklearn.cluster import KMeans
+from sklearn.metrics.pairwise import cosine_distances
 
 if __name__ == '__main__':
+    # set input file
+    file_name = "egg1"
 
+    file_path = file_name+'.xlsx'
 
-    def xlsx_to_numpy(file_path, sheet_name):
-        # Read the XLSX file into a pandas DataFrame
-        df = pd.read_excel(file_path, sheet_name=sheet_name)
+    # Read the XLSX file into a pandas DataFrame
+    df = pd.read_excel(file_path, sheet_name='Sheet1')
 
-        # Convert the DataFrame to a numpy array
-        numpy_array = df.to_numpy()
-
-        return numpy_array
-
-
-    file_path = 'burned_panckake1_results.xlsx'  # Specify the path to your XLSX file
-    sheet_name = 'Sheet1'  # Specify the name of the sheet in the XLSX file
-
-    numpy_array = xlsx_to_numpy(file_path, sheet_name)
-
+    # Convert the DataFrame to a numpy array
+    numpy_array = df.to_numpy()
 
     # Calculate cosine distances between embedding vectors
     distances = cosine_distances(numpy_array)
@@ -35,6 +27,6 @@ if __name__ == '__main__':
     df = pd.DataFrame({"Burned Frame Indices": burned_frame_indices})
 
     # Save the DataFrame to an Excel file
-    df.to_excel("burned_frames_cosine.xlsx", index=False)
+    df.to_excel(file_name + "_cosine.xlsx", index=False)
 
 
