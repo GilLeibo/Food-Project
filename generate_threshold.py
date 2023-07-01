@@ -3,6 +3,14 @@ import numpy as np
 import torchvision
 from sklearn.metrics.pairwise import cosine_similarity
 
+"""
+* In this code you need to specify a video file_name and the time when the food in the video is starting to be 
+considered burned and the code produce the threshold one can use with cosine_similarity to decide when other food videos
+are starting to be burned (smaller than the threshold).
+* You can also set the number of seconds you want the threshold will be calculated on (number of frames is inferred from
+that given time).
+"""
+
 if __name__ == '__main__':
     # set input file
     file_name = "egg1"
