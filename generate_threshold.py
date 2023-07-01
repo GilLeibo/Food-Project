@@ -45,3 +45,4 @@ if __name__ == '__main__':
     num_frames_to_average_threshold = int(video_fps * time_in_seconds_for_threshold)
     threshold_calc_array = (distances[:][0])[time_burned_frame_index-num_frames_to_average_threshold: time_burned_frame_index]
     threshold = np.average(threshold_calc_array)
+    print("The threshold is: ", threshold)
