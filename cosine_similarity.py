@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 import torchvision
 from sklearn.metrics.pairwise import cosine_similarity
 
@@ -28,6 +29,11 @@ if __name__ == '__main__':
     # Calculate cosine similarity between embedding vectors
     distances = cosine_similarity(numpy_array)
 
+    # set time in seconds to average threshold
+    time_in_seconds_for_threshold = 3
+
     # calc the threshold which frames with cosine_similarity (compare to the first frame)
     # lower than that will be considered burned
-    threshold = distances[time_burned_frame_index][0]
+    num_frames_to_average_threshold = int(video_fps * time_in_seconds_for_threshold)
+    threshold_calc_array = (distances[:][0])[time_burned_frame_index-num_frames_to_average_threshold: time_burned_frame_index]
+    threshold = np.average(threshold_calc_array)
