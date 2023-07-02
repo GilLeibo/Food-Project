@@ -32,7 +32,20 @@ if __name__ == '__main__':
     time_in_seconds_for_threshold = 3
 
     num_frames_to_average_threshold = int(video_fps * time_in_seconds_for_threshold)
-    array = distances[:][0]
+    distances_from_first_frame = distances[:][0]
 
-    array.shape
+    values_to_average = np.ones(num_frames_to_average_threshold)
 
+    for index, distance in enumerate(distances_from_first_frame):
+        values_to_average = np.append(values_to_average, distance)
+        values_to_average = values_to_average[1:]
+        calculated_threshold = np.average(values_to_average)
+        if calculated_threshold <= threshold:
+            print("The index of the first burned frame is: ", index)
+            for i, frame in enumerate(video):
+                if i == index:
+                    # show frame:
+                    img = torchvision.transforms.ToPILImage()(frame['data'])
+                    img.show()
+                    break
+            break
