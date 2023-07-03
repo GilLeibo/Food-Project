@@ -25,7 +25,7 @@ def apply_grabcut(frame, mask, rect):
 
 if __name__ == '__main__':
     # Set input file
-    input_file = "egg2_edge"
+    input_file = "egg2_edge_long"
 
     # Load the video
     cap = cv2.VideoCapture(input_file + '_raw.mp4')
@@ -54,7 +54,8 @@ if __name__ == '__main__':
         # (x, y, width, height) - x and y specify the coordinates of the top - left corner of the rectangle
         rect_dict = {
             "egg2": [70, 30, 760, 550],
-            "egg2_edge": [0, 70, 300, 600]
+            "egg2_edge": [0, 70, 300, 600],
+            "egg2_edge_long": [0, 70, 300, 600]
         }
         rect = rect_dict[input_file]
 
