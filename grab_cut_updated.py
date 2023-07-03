@@ -54,7 +54,7 @@ if __name__ == '__main__':
         # (x, y, width, height) - x and y specify the coordinates of the top - left corner of the rectangle
         rect_dict = {
             "egg2": [70, 30, 760, 550],
-            "egg2_edge": [0, 0, 760, 550]
+            "egg2_edge": [0, 70, 300, 600]
         }
         rect = rect_dict[input_file]
 
