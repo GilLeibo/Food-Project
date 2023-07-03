@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
 
+
 def get_majority_mask(masks):
     # Compute the majority mask based on the input list of masks
     # by summing them element-wise and thresholding the result
@@ -23,15 +24,18 @@ def apply_grabcut(frame, mask, rect):
 
 
 if __name__ == '__main__':
+    # Set input file
+    input_file = "egg2_edge"
+
     # Load the video
-    cap = cv2.VideoCapture('egg1_raw.mp4')
+    cap = cv2.VideoCapture(input_file + '_raw.mp4')
     fps = int(cap.get(cv2.CAP_PROP_FPS))
     width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
     # Define the output codec and create a VideoWriter object
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-    out = cv2.VideoWriter('output_video.mp4', fourcc, fps, (width, height))
+    out = cv2.VideoWriter(input_file + '.mp4', fourcc, fps, (width, height))
 
     # Variables to store the previous frames and masks
     previous_frames = []
@@ -47,7 +51,11 @@ if __name__ == '__main__':
         mask = np.zeros(frame.shape[:2], np.uint8)
 
         # Define the area of interest (the rectangle around the object to keep)
-        rect = (70, 30, 760, 550)
+        rect_dict = {
+            "egg2": [70, 30, 760, 550],
+            "egg2_edge": [70, 30, 760, 550]
+        }
+        rect = rect_dict[input_file]
 
         # Apply GrabCut to the current frame
         frame, mask = apply_grabcut(frame, mask, rect)
