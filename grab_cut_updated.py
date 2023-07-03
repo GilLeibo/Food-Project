@@ -50,10 +50,11 @@ if __name__ == '__main__':
         # Create a mask with the same shape as the frame
         mask = np.zeros(frame.shape[:2], np.uint8)
 
-        # Define the area of interest (the rectangle around the object to keep)
+        # Define the area of interest (the rectangle around the object to keep).
+        # (x, y, width, height) - x and y specify the coordinates of the top - left corner of the rectangle
         rect_dict = {
             "egg2": [70, 30, 760, 550],
-            "egg2_edge": [70, 30, 760, 550]
+            "egg2_edge": [0, 0, 760, 550]
         }
         rect = rect_dict[input_file]
 
