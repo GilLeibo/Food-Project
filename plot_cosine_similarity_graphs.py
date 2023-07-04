@@ -82,4 +82,5 @@ if __name__ == '__main__':
         print("generated cosine similarity graph for input: ", file)
 
     plot_all_cosine_similarities(cosine_similarities)
+    print("generated cosine similarity graph with all inputs")
 
