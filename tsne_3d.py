@@ -3,14 +3,6 @@ import matplotlib.pyplot as plt
 from sklearn.manifold import TSNE
 import pandas as pd
 
-def xlsx_to_numpy(file_path):
-    # Read the XLSX file into a pandas DataFrame
-    df = pd.read_excel(file_path, header=None)
-
-    # Convert the DataFrame to a numpy array
-    numpy_array = df.to_numpy()
-    return numpy_array
-
 
 def visualize_video_embedding(embeddings):
     # embeddings: numpy array of shape (embedding_dim, num_frames)
@@ -30,15 +22,56 @@ def visualize_video_embedding(embeddings):
     plt.title('Video Embedding Visualization')
     plt.show()
 
+
+def get_values_according2_embedding_format(df, embedding_format):
+    embeddings_features = df.iloc[:-6, :]
+    rgb_features = df.iloc[-6:-3, :]
+    hsv_features = df.iloc[-3:, :]
+
+    match embedding_format:
+        case "full_embeddings":
+            return df
+        case "embeddings_only":
+            return embeddings_features
+        case "embedding_rgb":
+            return pd.concat([embeddings_features, rgb_features], axis=0)
+        case "embedding_hsv":
+            return pd.concat([embeddings_features, hsv_features], axis=0)
+        case "rgb_hsv":
+            return pd.concat([rgb_features, hsv_features], axis=0)
+        case "rgb":
+            return rgb_features
+        case "hsv":
+            return hsv_features
+
+
+embedding_formats_dict = {
+    "1": "full_embeddings",
+    "2": "embeddings_only",
+    "3": "embedding_rgb",
+    "4": "embedding_hsv",
+    "5": "rgb_hsv",
+    "6": "rgb",
+    "7": "hsv"
+}
+
 if __name__ == '__main__':
-    # set input file
+    # configure settings
     file_name = "pancake1"
+    embedding_format_key = "3"
 
     # paths
     result_excel_path = "/home/gilnetanel/Desktop/results/" + file_name + ".xlsx"
 
-    numpy_array = xlsx_to_numpy(result_excel_path)
-    print(numpy_array.shape)
+    # Read the XLSX file into a pandas DataFrame
+    df = pd.read_excel(result_excel_path, header=None)
+
+    # process df according to desired embedding format
+    embedding_format = embedding_formats_dict.get(embedding_format_key)
+    desired_df = get_values_according2_embedding_format(df, embedding_format)
+
+    # Convert the DataFrame to a numpy array
+    numpy_array = desired_df.to_numpy()
 
     visualize_video_embedding(numpy_array)
 
