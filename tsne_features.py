@@ -1,12 +1,10 @@
 import pandas as pd
 from sklearn.manifold import TSNE
 import matplotlib.pyplot as plt
+import numpy as np
+
 
 if __name__ == '__main__':
-    import pandas as pd
-    from sklearn.manifold import TSNE
-    import matplotlib.pyplot as plt
-    import numpy as np
 
     # Load the Excel sheet into a Pandas DataFrame
     df = pd.read_excel('example.xlsx', header=None)

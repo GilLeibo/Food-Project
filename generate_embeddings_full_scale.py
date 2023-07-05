@@ -9,16 +9,33 @@ import torchvision.transforms as T
 import torchvision.transforms.functional as F
 
 """
-Generate embeddings with dinov2 model to input video and save to excel file.
+Generate embeddings to input video and save to excel file.
 """
 
 
-def generate_embeddings(file_name):
+def get_model(model_name):
+    match model_name:
+        case "dinov2_vits14":
+            dinov2_vits14 = torch.hub.load('facebookresearch/dinov2', 'dinov2_vits14')
+            return dinov2_vits14
+        case "dinov2_vitb14":
+            dinov2_vitb14 = torch.hub.load('facebookresearch/dinov2', 'dinov2_vitb14')
+            return dinov2_vitb14
+        case "dinov2_vitl14":
+            dinov2_vitl14 = torch.hub.load('facebookresearch/dinov2', 'dinov2_vitl14')
+            return dinov2_vitl14
+        case "dinov2_vitg14":
+            dinov2_vitg14 = torch.hub.load('facebookresearch/dinov2', 'dinov2_vitg14')
+            return dinov2_vitg14
+
+
+def generate_embeddings(file_name, model_name):
     print("Started to generate embeddings of file name: {} \n".format(file_name))
 
     # paths
-    result_csv_path = "/home/gilnetanel/Desktop/results/" + file_name + ".csv"
-    result_excel_path = "/home/gilnetanel/Desktop/results/" + file_name + ".xlsx"
+    output_file_name = model_name + '_' + file_name
+    result_csv_path = "/home/gilnetanel/Desktop/results/" + output_file_name + ".csv"
+    result_excel_path = "/home/gilnetanel/Desktop/results/" + output_file_name + ".xlsx"
     input_file_path = "/home/gilnetanel/Desktop/input/" + file_name + ".mp4"
 
     # delete current excel+csv results files for the given file name
@@ -38,15 +55,12 @@ def generate_embeddings(file_name):
     # print(torch.cuda.memory_summary(0))
     torch.cuda.empty_cache()
 
-    # load dinov2 model (uncomment your desierd model):
-    # dinov2_vits14 = torch.hub.load('facebookresearch/dinov2', 'dinov2_vits14')
-    dinov2_vitb14 = torch.hub.load('facebookresearch/dinov2', 'dinov2_vitb14')
-    # dinov2_vitl14 = torch.hub.load('facebookresearch/dinov2', 'dinov2_vitl14')
-    # dinov2_vitg14 = torch.hub.load('facebookresearch/dinov2', 'dinov2_vitg14')
+    # load model
+    model = get_model(model_name)
 
     # move model to cuda
-    dinov2_vitb14.cuda()
-    dinov2_vitb14.eval()
+    model.cuda()
+    model.eval()
 
     # load video and get frames
     torchvision.set_video_backend("pyav")
@@ -79,7 +93,7 @@ def generate_embeddings(file_name):
         # make inference and save embeddings to csv file
         ready_frame = torch.unsqueeze(transformed_frame, 0)
         ready_frame = ready_frame.cuda()
-        output = dinov2_vitb14(ready_frame)  # inference
+        output = model(ready_frame)  # inference
         # save embedding
         output_np = output.cpu().detach().numpy()  # convert to Numpy array
         output_df = pd.DataFrame(output_np).transpose()  # convert to dataframe
@@ -122,11 +136,12 @@ Add to each embedding vector values of: mean r,g,b and mean h,s,v of the frame t
 """
 
 
-def add_means_to_embeddings(file_name):
+def add_means_to_embeddings(file_name, model_name):
     print("Started to add mean values to embeddings of file name: {} \n".format(file_name))
 
     # paths
-    result_excel_path = "/home/gilnetanel/Desktop/results/" + file_name + ".xlsx"
+    output_file_name = model_name + '_' + file_name
+    result_excel_path = "/home/gilnetanel/Desktop/results/" + output_file_name + ".xlsx"
     input_file_path = "/home/gilnetanel/Desktop/input/" + file_name + ".mp4"
 
     # Read the Excel file into a pandas DataFrame
@@ -158,12 +173,13 @@ def add_means_to_embeddings(file_name):
 
 
 def main():
-    # set input files
+    # configure settings
     input_files = ["egg1"]
+    model_name = "dinov2_vitb14"
 
     for file in input_files:
-        generate_embeddings(file)
-        add_means_to_embeddings(file)
+        generate_embeddings(file, model_name)
+        add_means_to_embeddings(file, model_name)
 
 
 if __name__ == "__main__":
