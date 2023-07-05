@@ -39,7 +39,7 @@ def plot_cosine_similarity_separately(file_name, directory_path, model_name, emb
     plt.ylabel('Cosine similarity')
 
     # giving a title to my graph
-    plt.title('Cosine similarity ' + model_name + ' ' + embedding_format + '. Input: ' + file_name)
+    plt.title('Cosine similarity VS Frame\n embedding_format: ' + embedding_format + ', input: ' + file_name)
 
     # function to show the plot
     # plt.show()
@@ -68,7 +68,7 @@ def plot_all_cosine_similarities(cosine_similarities, directory_path, model_name
     plt.ylabel('Cosine similarity')
 
     # giving a title to my graph
-    plt.title('Cosine similarity ' + model_name + ' ' + embedding_format + '. All inputs')
+    plt.title('Cosine similarity VS Frame\n embedding_format: ' + embedding_format + ', all inputs')
     plt.legend()
 
     # function to show the plot
@@ -81,7 +81,7 @@ def plot_all_cosine_similarities(cosine_similarities, directory_path, model_name
 
 def get_values_according2_embedding_format(df, embedding_format):
     embeddings_features = df.iloc[:-6, :]
-    rgb_features = df.iloc[-7:-3, :]
+    rgb_features = df.iloc[-6:-3, :]
     hsv_features = df.iloc[-3:, :]
 
     match embedding_format:
@@ -90,11 +90,11 @@ def get_values_according2_embedding_format(df, embedding_format):
         case "embeddings_only":
             return embeddings_features
         case "embedding_rgb":
-            return pd.concat([embeddings_features, rgb_features], axis=1)
+            return pd.concat([embeddings_features, rgb_features], axis=0)
         case "embedding_hsv":
-            return pd.concat([embeddings_features, hsv_features], axis=1)
+            return pd.concat([embeddings_features, hsv_features], axis=0)
         case "rgb_hsv":
-            return pd.concat([rgb_features, hsv_features], axis=1)
+            return pd.concat([rgb_features, hsv_features], axis=0)
         case "rgb":
             return rgb_features
         case "hsv":
@@ -114,7 +114,7 @@ embedding_formats_dict = {
 if __name__ == '__main__':
     # configure settings
     input_files = ["egg1", "egg1_edge", "egg1_edge_long", "egg2", "pancake1"]
-    desired_embedding_formats_keys = ["1"]
+    desired_embedding_formats_keys = ["3"]
     model_name = "dinov2_vitb14"
 
     # delete model_name directory content if exist and create a new one
