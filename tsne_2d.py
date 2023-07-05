@@ -5,7 +5,7 @@ import pandas as pd
 
 def xlsx_to_numpy(file_path, sheet_name):
     # Read the XLSX file into a pandas DataFrame
-    df = pd.read_excel(file_path, sheet_name=sheet_name)
+    df = pd.read_excel(file_path, header=None)
 
     # Convert the DataFrame to a numpy array
     numpy_array = df.to_numpy()

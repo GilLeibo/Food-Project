@@ -1,26 +1,16 @@
 import numpy as np
-from sklearn.cluster import KMeans
-import matplotlib.pyplot as plt
-from sklearn.manifold import TSNE
 import pandas as pd
-import numpy as np
+from sklearn.cluster import KMeans
+
 
 if __name__ == '__main__':
-
-    def xlsx_to_numpy(file_path, sheet_name):
-        # Read the XLSX file into a pandas DataFrame
-        df = pd.read_excel(file_path, sheet_name=sheet_name)
-
-        # Convert the DataFrame to a numpy array
-        numpy_array = df.to_numpy()
-
-        return numpy_array
-
-
     file_path = 'burned_panckake1_results.xlsx'  # Specify the path to your XLSX file
-    sheet_name = 'Sheet1'  # Specify the name of the sheet in the XLSX file
 
-    numpy_array = xlsx_to_numpy(file_path, sheet_name)
+    # Read the XLSX file into a pandas DataFrame
+    df = pd.read_excel(file_path, header=None)
+
+    # Convert the DataFrame to a numpy array
+    numpy_array = df.to_numpy()
 
     # Set the number of clusters (burned and unburned)
     num_clusters = 3

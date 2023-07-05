@@ -9,14 +9,16 @@ if __name__ == '__main__':
     import numpy as np
 
     # Load the Excel sheet into a Pandas DataFrame
-    df = pd.read_excel('pancake1_xl.xlsx')
+    df = pd.read_excel('example.xlsx', header=None)
 
     # Extract the last 6 features
-    last_six_features = df.iloc[:, -6:]
+    six_features = df.iloc[-7:, :]
+    first_three_features = df.iloc[-7:-3, :]
+    last_three_features = df.iloc[-3:, :]
 
     # Perform t-SNE with 2 dimensions
     tsne = TSNE(n_components=2, random_state=42)
-    tsne_results = tsne.fit_transform(last_six_features)
+    tsne_results = tsne.fit_transform(six_features)
 
     # Plot the video visualization
     plt.figure(figsize=(8, 6))

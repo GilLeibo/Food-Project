@@ -3,9 +3,9 @@ import matplotlib.pyplot as plt
 from sklearn.manifold import TSNE
 import pandas as pd
 
-def xlsx_to_numpy(file_path, sheet_name):
+def xlsx_to_numpy(file_path):
     # Read the XLSX file into a pandas DataFrame
-    df = pd.read_excel(file_path, sheet_name=sheet_name)
+    df = pd.read_excel(file_path, header=None)
 
     # Convert the DataFrame to a numpy array
     numpy_array = df.to_numpy()
@@ -37,7 +37,7 @@ if __name__ == '__main__':
     # paths
     result_excel_path = "/home/gilnetanel/Desktop/results/" + file_name + ".xlsx"
 
-    numpy_array = xlsx_to_numpy(result_excel_path, 'Sheet1')
+    numpy_array = xlsx_to_numpy(result_excel_path)
     print(numpy_array.shape)
 
     visualize_video_embedding(numpy_array)

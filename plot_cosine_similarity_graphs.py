@@ -10,7 +10,7 @@ def plot_cosine_similarity_separately(file_name):
     result_excel_path = "/home/gilnetanel/Desktop/results/" + file_name + ".xlsx"
 
     # Read the XLSX file into a pandas DataFrame
-    df = pd.read_excel(result_excel_path, sheet_name='Sheet1')
+    df = pd.read_excel(result_excel_path, header=None)
 
     # Convert the DataFrame to a numpy array and transpose it
     numpy_array = (df.to_numpy()).transpose()

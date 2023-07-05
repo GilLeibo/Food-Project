@@ -29,7 +29,7 @@ if __name__ == '__main__':
     time_burned_frame_index = int(time_burned * video_fps)
 
     # Read the XLSX file into a pandas DataFrame
-    df = pd.read_excel(result_excel_path, sheet_name='Sheet1')
+    df = pd.read_excel(result_excel_path, header=None)
 
     # Convert the DataFrame to a numpy array and transpose it
     numpy_array = (df.to_numpy()).transpose()
