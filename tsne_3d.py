@@ -5,8 +5,6 @@ import pandas as pd
 
 
 def visualize_video_embedding(embeddings):
-    # embeddings: numpy array of shape (embedding_dim, num_frames)
-
     # Apply t-SNE for dimensionality reduction to 3 dimensions
     tsne = TSNE(n_components=3, random_state=42)
     embeddings_tsne = tsne.fit_transform(embeddings)
@@ -57,11 +55,11 @@ embedding_formats_dict = {
 
 if __name__ == '__main__':
     # configure settings
-    file_name = "pancake1"
-    embedding_format_key = "3"
+    file_name = "dinov2_vitb14_egg1"
+    embedding_format_key = "7"
 
     # paths
-    result_excel_path = "/home/gilnetanel/Desktop/results/" + file_name + ".xlsx"
+    result_excel_path = file_name + ".xlsx"
 
     # Read the XLSX file into a pandas DataFrame
     df = pd.read_excel(result_excel_path, header=None)
@@ -73,7 +71,7 @@ if __name__ == '__main__':
     # Convert the DataFrame to a numpy array
     numpy_array = desired_df.to_numpy()
 
-    visualize_video_embedding(numpy_array)
+    visualize_video_embedding(numpy_array.transpose())
 
 
 
