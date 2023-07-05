@@ -72,7 +72,3 @@ if __name__ == '__main__':
     numpy_array = desired_df.to_numpy()
 
     visualize_video_embedding(numpy_array.transpose())
-
-
-
-
