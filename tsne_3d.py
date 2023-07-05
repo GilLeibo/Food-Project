@@ -59,7 +59,7 @@ if __name__ == '__main__':
     embedding_format_key = "7"
 
     # paths
-    result_excel_path = file_name + ".xlsx"
+    result_excel_path = "/home/gilnetanel/Desktop/results/" + file_name + ".xlsx"
 
     # Read the XLSX file into a pandas DataFrame
     df = pd.read_excel(result_excel_path, header=None)

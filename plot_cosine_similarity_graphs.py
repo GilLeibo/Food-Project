@@ -113,20 +113,21 @@ embedding_formats_dict = {
 
 if __name__ == '__main__':
     # configure settings
-    input_files = ["egg1", "egg1_edge", "egg1_edge_long", "egg2", "pancake1"]
-    desired_embedding_formats_keys = ["3"]
+    input_files = ["egg1", "egg1_edge", "egg1_edge_long", "egg1_full", "egg2", "pancake1",
+                   "pancake1_zoomed", "pancake2"]
+    desired_embedding_formats_keys = ["1", "2", "3", "4", "5", "6", "7"]
     model_name = "dinov2_vitb14"
 
     # delete model_name directory content if exist and create a new one
-    cmd1 = 'rm -r /home/gilnetanel/Desktop/Figures/' + model_name
-    cmd2 = 'mkdir -p /home/gilnetanel/Desktop/Figures/' + model_name
+    cmd1 = 'rm -r /home/gilnetanel/Desktop/Figures/Cosine/' + model_name
+    cmd2 = 'mkdir -p /home/gilnetanel/Desktop/Figures/Cosine/' + model_name
     subprocess.run(cmd1, shell=True)
     subprocess.run(cmd2, shell=True)
 
     for embedding_format_key in desired_embedding_formats_keys:
         embedding_format = embedding_formats_dict.get(embedding_format_key)
 
-        directory_path = '/home/gilnetanel/Desktop/Figures/' + model_name + '/' + embedding_format
+        directory_path = '/home/gilnetanel/Desktop/Figures/Cosine/' + model_name + '/' + embedding_format
 
         # create new embedding_format_value directory
         cmd = 'mkdir -p ' + directory_path
@@ -137,7 +138,8 @@ if __name__ == '__main__':
             file_name = model_name + '_' + file
             values = plot_cosine_similarity_separately(file_name, directory_path, model_name, embedding_format)
             cosine_similarities[file_name] = values
-            print("generated cosine similarity graph for input: ", file_name)
+            print("generated cosine similarity graph for input: " + file_name +
+                  " with embedding format: " + embedding_format)
 
         plot_all_cosine_similarities(cosine_similarities, directory_path, model_name, embedding_format)
         print("generated cosine similarity graph with all inputs")
