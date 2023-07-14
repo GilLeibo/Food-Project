@@ -1,10 +1,9 @@
-import os
-import torch
-import torchvision
-from torch import nn
-from torch.utils.data import DataLoader
-from torchvision import datasets, transforms
 import pandas as pd
+import torchvision
+import torch
+import torch.nn as nn
+import torch.optim as optim
+import tqdm
 
 
 class NeuralNetwork(nn.Module):
@@ -12,53 +11,17 @@ class NeuralNetwork(nn.Module):
         super().__init__()
         self.flatten = nn.Flatten()
         self.linear_relu_stack = nn.Sequential(
-            nn.Linear(input_size, input_size/2),
+            nn.Linear(input_size, int(input_size / 2)),
             nn.ReLU(),
-            nn.Linear(input_size/2, input_size/4),
+            nn.Linear(int(input_size / 2), int(input_size / 4)),
             nn.ReLU(),
-            nn.Linear(input_size/4, input_size),
+            nn.Linear(int(input_size / 4), input_size),
         )
 
     def forward(self, x):
         x = self.flatten(x)
         logits = self.linear_relu_stack(x)
         return logits
-
-
-def train_one_epoch(epoch_index, tb_writer):
-    running_loss = 0.
-    last_loss = 0.
-
-    # Here, we use enumerate(training_loader) instead of
-    # iter(training_loader) so that we can track the batch
-    # index and do some intra-epoch reporting
-    for i, data in enumerate(training_loader):
-        # Every data instance is an input + label pair
-        inputs, labels = data
-
-        # Zero your gradients for every batch!
-        optimizer.zero_grad()
-
-        # Make predictions for this batch
-        outputs = model(inputs)
-
-        # Compute the loss and its gradients
-        loss = loss_fn(outputs, labels)
-        loss.backward()
-
-        # Adjust learning weights
-        optimizer.step()
-
-        # Gather data and report
-        running_loss += loss.item()
-        if i % 1000 == 999:
-            last_loss = running_loss / 1000 # loss per batch
-            print('  batch {} loss: {}'.format(i + 1, last_loss))
-            tb_x = epoch_index * len(training_loader) + i + 1
-            tb_writer.add_scalar('Loss/train', last_loss, tb_x)
-            running_loss = 0.
-
-    return last_loss
 
 
 def get_values_according2_embedding_format(df, embedding_format):
@@ -101,74 +64,74 @@ if __name__ == "__main__":
     # configure settings
     embedding_format_key = "2"
     file_name = "dinov2_vitb14_egg1"
+    prediction_time = 60    # time gap to predicate (in seconds)
+    video_fps = 30      # make sure your video was filmed in 30 fps. make sure your video in normal speed (not double)
+    test_set_size = 100     # number of frames for the test set
 
     # create dataset for training
     result_excel_path = "/home/gilnetanel/Desktop/results/" + file_name + ".xlsx"
     df = pd.read_excel(result_excel_path, header=None)
     embedding_format = embedding_formats_dict.get(embedding_format_key)
-    desired_df = get_values_according2_embedding_format(df, embedding_format)
-    training_dataset = desired_df.to_numpy()
-    input_size = training_dataset.shape[0]
+    data_set = get_values_according2_embedding_format(df, embedding_format)
+    input_size = data_set.shape[0]
+
+    # input size needs to be even
+    assert input_size % 2 == 0
 
     # creates model instance and move it to cuda
     model = NeuralNetwork()
     model.cuda()
 
-    # create data loader
-    # training_loader = torch.utils.data.DataLoader(training_dataset, batch_size=4, shuffle=False)
+    # load the dataset
+    gap_to_prediction_frame = int(prediction_time * video_fps)
+    X = data_set.iloc[:, :-gap_to_prediction_frame]
+    y = data_set.iloc[:, gap_to_prediction_frame:]
 
-    # loss function
-    loss_fn = torch.nn.CrossEntropyLoss()
+    # split the dataset into training and test sets
+    Xtrain = X.iloc[:, :-test_set_size]
+    ytrain = y.iloc[:, :-test_set_size]
+    Xtest = X.iloc[:, test_set_size:]
+    ytest = y.iloc[:, test_set_size:]
 
     # optimizer
     optimizer = torch.optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
 
+    n_epochs = 5  # number of epochs to run
+    batch_size = 100  # size of each batch
+    batches_per_epoch = len(Xtrain.shape[1]) // batch_size
 
-    # Initializing in a separate cell so we can easily add more epochs to the same run
-    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    writer = SummaryWriter('runs/fashion_trainer_{}'.format(timestamp))
-    epoch_number = 0
+    # collect statistics
+    train_loss = []
+    train_acc = []
+    test_acc = []
 
-    EPOCHS = 5
-
-    best_vloss = 1_000_000.
-
-    for epoch in range(EPOCHS):
-        print('EPOCH {}:'.format(epoch_number + 1))
-
-        # Make sure gradient tracking is on, and do a pass over the data
-        model.train(True)
-        avg_loss = train_one_epoch(epoch_number, writer)
-
-        running_vloss = 0.0
-        # Set the model to evaluation mode, disabling dropout and using population
-        # statistics for batch normalization.
-        model.eval()
-
-        # Disable gradient computation and reduce memory consumption.
-        with torch.no_grad():
-            for i, vdata in enumerate(validation_loader):
-                vinputs, vlabels = vdata
-                voutputs = model(vinputs)
-                vloss = loss_fn(voutputs, vlabels)
-                running_vloss += vloss
-
-        avg_vloss = running_vloss / (i + 1)
-        print('LOSS train {} valid {}'.format(avg_loss, avg_vloss))
-
-        # Log the running loss averaged per batch
-        # for both training and validation
-        writer.add_scalars('Training vs. Validation Loss',
-                           {'Training': avg_loss, 'Validation': avg_vloss},
-                           epoch_number + 1)
-        writer.flush()
-
-        # Track best performance, and save the model's state
-        if avg_vloss < best_vloss:
-            best_vloss = avg_vloss
-            model_path = 'model_{}_{}'.format(timestamp, epoch_number)
-            torch.save(model.state_dict(), model_path)
-
-        epoch_number += 1
-
-
+    for epoch in range(n_epochs):
+        with tqdm.trange(batches_per_epoch, unit="batch", mininterval=0) as bar:
+            bar.set_description(f"Epoch {epoch}")
+            for i in bar:
+                # take a batch
+                start = i * batch_size
+                Xbatch = Xtrain[start:start + batch_size]
+                ybatch = ytrain[start:start + batch_size]
+                # forward pass
+                y_pred = model(Xbatch)
+                loss = loss_fn(y_pred, ybatch)
+                acc = (y_pred.round() == ybatch).float().mean()
+                # store metrics
+                train_loss.append(float(loss))
+                train_acc.append(float(acc))
+                # backward pass
+                optimizer.zero_grad()
+                loss.backward()
+                # update weights
+                optimizer.step()
+                # print progress
+                bar.set_postfix(
+                    loss=float(loss),
+                    acc=f"{float(acc) * 100:.2f}%"
+                )
+        # evaluate model at end of epoch
+        y_pred = model(Xtest)
+        acc = (y_pred.round() == ytest).float().mean()
+        test_acc.append(float(acc))
+        print(f"End of {epoch}, accuracy {acc}")
