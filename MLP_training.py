@@ -4,6 +4,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import tqdm
+from sklearn.metrics.pairwise import cosine_distances
 
 
 class NeuralNetwork(nn.Module):
@@ -23,6 +24,13 @@ class NeuralNetwork(nn.Module):
         logits = self.linear_relu_stack(x)
         return logits
 
+
+def calc_loss(y_pred, ybatch):
+    # Convert the DataFrame to a numpy array and transpose it
+    numpy_array = (desired_df.to_numpy()).transpose()
+
+    # Calculate cosine similarity between embedding vectors
+    distances = cosine_distances(numpy_array)
 
 def get_values_according2_embedding_format(df, embedding_format):
     embeddings_features = df.iloc[:-6, :]
@@ -67,6 +75,8 @@ if __name__ == "__main__":
     prediction_time = 60    # time gap to predicate (in seconds)
     video_fps = 30      # make sure your video was filmed in 30 fps. make sure your video in normal speed (not double)
     test_set_size = 100     # number of frames for the test set
+    n_epochs = 5  # number of epochs to run
+    batch_size = 100  # size of each batch
 
     # create dataset for training
     result_excel_path = "/home/gilnetanel/Desktop/results/" + file_name + ".xlsx"
@@ -85,38 +95,35 @@ if __name__ == "__main__":
     # load the dataset
     gap_to_prediction_frame = int(prediction_time * video_fps)
     X = data_set.iloc[:, :-gap_to_prediction_frame]
-    y = data_set.iloc[:, gap_to_prediction_frame:]
+    Y = data_set.iloc[:, gap_to_prediction_frame:]
 
     # split the dataset into training and test sets
     Xtrain = X.iloc[:, :-test_set_size]
-    ytrain = y.iloc[:, :-test_set_size]
-    Xtest = X.iloc[:, test_set_size:]
-    ytest = y.iloc[:, test_set_size:]
+    Ytrain = Y.iloc[:, :-test_set_size]
+    Xtest = X.iloc[:, -test_set_size:]
+    Ytest = Y.iloc[:, -test_set_size:]
 
     # optimizer
     optimizer = torch.optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
-
-    n_epochs = 5  # number of epochs to run
-    batch_size = 100  # size of each batch
-    batches_per_epoch = len(Xtrain.shape[1]) // batch_size
 
     # collect statistics
     train_loss = []
     train_acc = []
     test_acc = []
 
+    batches_per_epoch = Xtrain.shape[1] // batch_size
     for epoch in range(n_epochs):
         with tqdm.trange(batches_per_epoch, unit="batch", mininterval=0) as bar:
             bar.set_description(f"Epoch {epoch}")
             for i in bar:
                 # take a batch
                 start = i * batch_size
-                Xbatch = Xtrain[start:start + batch_size]
-                ybatch = ytrain[start:start + batch_size]
+                Xbatch = (torch.tensor(Xtrain.iloc[:, start:start + batch_size].to_numpy())).to(torch.float32)
+                Ybatch = (torch.tensor(Ytrain.iloc[:, start:start + batch_size].to_numpy())).to(torch.float32)
                 # forward pass
-                y_pred = model(Xbatch)
-                loss = loss_fn(y_pred, ybatch)
-                acc = (y_pred.round() == ybatch).float().mean()
+                Y_pred = model(Xbatch.cuda())
+                loss = calc_loss(Y_pred, Ybatch)
+                acc = (Y_pred.round() == Ybatch).float().mean()
                 # store metrics
                 train_loss.append(float(loss))
                 train_acc.append(float(acc))
@@ -131,7 +138,7 @@ if __name__ == "__main__":
                     acc=f"{float(acc) * 100:.2f}%"
                 )
         # evaluate model at end of epoch
-        y_pred = model(Xtest)
-        acc = (y_pred.round() == ytest).float().mean()
+        Y_pred = model(Xtest)
+        acc = (Y_pred.round() == Ytest).float().mean()
         test_acc.append(float(acc))
         print(f"End of {epoch}, accuracy {acc}")
