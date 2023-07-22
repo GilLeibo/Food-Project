@@ -21,16 +21,10 @@ class NeuralNetwork(nn.Module):
 
     def forward(self, x):
         x = self.flatten(x)
-        logits = self.linear_relu_stack(x)
+        transposed_x = torch.transpose(x, 0, 1)
+        logits = self.linear_relu_stack(transposed_x)
         return logits
 
-
-def calc_loss(y_pred, ybatch):
-    # Convert the DataFrame to a numpy array and transpose it
-    numpy_array = (desired_df.to_numpy()).transpose()
-
-    # Calculate cosine similarity between embedding vectors
-    distances = cosine_distances(numpy_array)
 
 def get_values_according2_embedding_format(df, embedding_format):
     embeddings_features = df.iloc[:-6, :]
@@ -103,12 +97,14 @@ if __name__ == "__main__":
     Xtest = X.iloc[:, -test_set_size:]
     Ytest = Y.iloc[:, -test_set_size:]
 
+    # loss
+    loss_func = nn.CosineEmbeddingLoss()
+
     # optimizer
     optimizer = torch.optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
 
     # collect statistics
     train_loss = []
-    train_acc = []
     test_acc = []
 
     batches_per_epoch = Xtrain.shape[1] // batch_size
@@ -116,26 +112,25 @@ if __name__ == "__main__":
         with tqdm.trange(batches_per_epoch, unit="batch", mininterval=0) as bar:
             bar.set_description(f"Epoch {epoch}")
             for i in bar:
+                # make sure gradient tracking is on
+                model.train(True)
                 # take a batch
                 start = i * batch_size
                 Xbatch = (torch.tensor(Xtrain.iloc[:, start:start + batch_size].to_numpy())).to(torch.float32)
                 Ybatch = (torch.tensor(Ytrain.iloc[:, start:start + batch_size].to_numpy())).to(torch.float32)
-                # forward pass
-                Y_pred = model(Xbatch.cuda())
-                loss = calc_loss(Y_pred, Ybatch)
-                acc = (Y_pred.round() == Ybatch).float().mean()
-                # store metrics
-                train_loss.append(float(loss))
-                train_acc.append(float(acc))
-                # backward pass
+                # zero gradients
                 optimizer.zero_grad()
+                # forward pass
+                Y_pred = (torch.transpose(model(Xbatch.cuda()), 0, 1)).cpu()
+                # compute the loss and its gradients
+                loss = loss_func(torch.transpose(Y_pred, 0, 1), torch.transpose(Ybatch, 0, 1), torch.ones(Y_pred.shape[1]))
+                train_loss.append(loss.item())
                 loss.backward()
                 # update weights
                 optimizer.step()
                 # print progress
                 bar.set_postfix(
-                    loss=float(loss),
-                    acc=f"{float(acc) * 100:.2f}%"
+                    loss=float(loss)
                 )
         # evaluate model at end of epoch
         Y_pred = model(Xtest)
