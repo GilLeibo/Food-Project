@@ -1,10 +1,7 @@
+import matplotlib.pyplot as plt
 import pandas as pd
-import torchvision
 import torch
 import torch.nn as nn
-import torch.optim as optim
-import tqdm
-from sklearn.metrics.pairwise import cosine_distances
 
 
 class NeuralNetwork(nn.Module):
@@ -24,6 +21,31 @@ class NeuralNetwork(nn.Module):
         transposed_x = torch.transpose(x, 0, 1)
         logits = self.linear_relu_stack(transposed_x)
         return logits
+        # return x[:, x.shape[1]] + logits
+
+
+def plot_losses(test_losses):
+
+    # x axis values
+    x = range(len(test_losses))
+
+    # plotting the points
+    plt.plot(x, test_losses)
+
+    # naming the x-axis
+    plt.xlabel('epoch')
+    # naming the y-axis
+    plt.ylabel('test loss')
+
+    # giving a title to my graph
+    plt.title('Test loss VS Epoch')
+
+    # function to show the plot
+    # plt.show()
+
+    plt.savefig("/home/gilnetanel/Desktop/trained_models/test_losses_graph.png")
+
+    plt.close()
 
 
 def get_values_according2_embedding_format(df, embedding_format):
@@ -69,7 +91,7 @@ if __name__ == "__main__":
     prediction_time = 60    # time gap to predicate (in seconds)
     video_fps = 30      # make sure your video was filmed in 30 fps. make sure your video in normal speed (not double)
     test_set_size = 100     # number of frames for the test set
-    n_epochs = 5  # number of epochs to run
+    n_epochs = 200  # number of epochs to run
     batch_size = 100  # size of each batch
 
     # create dataset for training
@@ -97,43 +119,52 @@ if __name__ == "__main__":
     Xtest = X.iloc[:, -test_set_size:]
     Ytest = Y.iloc[:, -test_set_size:]
 
+    # convert dataFrames to tensors
+    Xtest = (torch.tensor(Xtest.to_numpy())).to(torch.float32)
+    Ytest = (torch.tensor(Ytest.to_numpy())).to(torch.float32)
+
     # loss
     loss_func = nn.CosineEmbeddingLoss()
 
     # optimizer
     optimizer = torch.optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
 
-    # collect statistics
-    train_loss = []
-    test_acc = []
+    # statistics
+    best_test_loss = float('inf')
+    test_losses = []
 
     batches_per_epoch = Xtrain.shape[1] // batch_size
     for epoch in range(n_epochs):
-        with tqdm.trange(batches_per_epoch, unit="batch", mininterval=0) as bar:
-            bar.set_description(f"Epoch {epoch}")
-            for i in bar:
-                # make sure gradient tracking is on
-                model.train(True)
-                # take a batch
-                start = i * batch_size
-                Xbatch = (torch.tensor(Xtrain.iloc[:, start:start + batch_size].to_numpy())).to(torch.float32)
-                Ybatch = (torch.tensor(Ytrain.iloc[:, start:start + batch_size].to_numpy())).to(torch.float32)
-                # zero gradients
-                optimizer.zero_grad()
-                # forward pass
-                Y_pred = (torch.transpose(model(Xbatch.cuda()), 0, 1)).cpu()
-                # compute the loss and its gradients
-                loss = loss_func(torch.transpose(Y_pred, 0, 1), torch.transpose(Ybatch, 0, 1), torch.ones(Y_pred.shape[1]))
-                train_loss.append(loss.item())
-                loss.backward()
-                # update weights
-                optimizer.step()
-                # print progress
-                bar.set_postfix(
-                    loss=float(loss)
-                )
-        # evaluate model at end of epoch
-        Y_pred = model(Xtest)
-        acc = (Y_pred.round() == Ytest).float().mean()
-        test_acc.append(float(acc))
-        print(f"End of {epoch}, accuracy {acc}")
+        # make sure gradient tracking is on
+        model.train(True)
+        for i in range(batches_per_epoch):
+            # take a batch
+            start = i * batch_size
+            Xbatch = (torch.tensor(Xtrain.iloc[:, start:start + batch_size].to_numpy())).to(torch.float32)
+            Ybatch = (torch.tensor(Ytrain.iloc[:, start:start + batch_size].to_numpy())).to(torch.float32)
+            # zero gradients
+            optimizer.zero_grad()
+            # forward pass
+            Y_pred = (torch.transpose(model(Xbatch.cuda()), 0, 1)).cpu()
+            # compute the loss and its gradients
+            loss = loss_func(torch.transpose(Y_pred, 0, 1), torch.transpose(Ybatch, 0, 1), torch.ones(Y_pred.shape[1]))
+            # print(f"batch {i}, loss {loss.item()}")
+            loss.backward()
+            # update weights
+            optimizer.step()
+            # print progress
+
+        # evaluate model at end of epoch on test_set
+        model.eval()
+        Y_pred = (torch.transpose(model(Xtest.cuda()), 0, 1)).cpu()
+        test_loss = loss_func(torch.transpose(Y_pred, 0, 1), torch.transpose(Ytest, 0, 1), torch.ones(Y_pred.shape[1]))
+        test_losses.append(test_loss.item())
+        print(f"End of epoch {epoch}, test_loss {test_loss}")
+
+        # track the best performance and save the model's state
+        if test_loss < best_test_loss:
+            best_test_loss = test_loss
+            model_save_path = "/home/gilnetanel/Desktop/trained_models/" + embedding_format
+            torch.save(model.state_dict(), model_save_path)
+
+    plot_losses(test_losses)
