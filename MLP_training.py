@@ -163,7 +163,7 @@ if __name__ == "__main__":
         # track the best performance and save the model's state
         if test_loss < best_test_loss:
             best_test_loss = test_loss
-            model_save_path = "/home/gilnetanel/Desktop/trained_models/" + embedding_format
+            model_save_path = "/home/gilnetanel/Desktop/trained_models/" + embedding_format + ".pickle"
             torch.save(model.state_dict(), model_save_path)
 
     plot_losses(test_losses)
