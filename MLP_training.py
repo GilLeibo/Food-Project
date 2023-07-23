@@ -19,9 +19,8 @@ class NeuralNetwork(nn.Module):
     def forward(self, x):
         x = self.flatten(x)
         transposed_x = torch.transpose(x, 0, 1)
-        logits = self.linear_relu_stack(transposed_x)
+        logits = self.linear_relu_stack(transposed_x) + x[:, :x.shape[1] // 2]
         return logits
-        # return x[:, x.shape[1]] + logits
 
 
 def plot_losses(test_losses):
