@@ -1,0 +1,211 @@
+import matplotlib.pyplot as plt
+import pandas as pd
+import numpy as np
+import torch
+import torch.nn as nn
+from torch.utils.data import Dataset, DataLoader
+
+
+class NeuralNetwork(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.flatten = nn.Flatten()
+        self.linear_relu_stack = nn.Sequential(
+            nn.Linear(2 * input_size, input_size // 2),
+            nn.ReLU(),
+            nn.Linear(input_size // 2, input_size // 4),
+            nn.ReLU(),
+            nn.Linear(input_size // 4, 3),
+            nn.ReLU(),
+            nn.Linear(3, input_size),
+        )
+
+    def forward(self, x):
+        x = self.flatten(x)
+        logits = self.linear_relu_stack(x) + x[:, :x.shape[1] // 2]
+        return logits
+
+
+class EmbeddingsDataset(Dataset):
+    def __init__(self, X, Y):
+        self.X = X
+        self.Y = Y
+
+    def __len__(self):
+        return self.X.size(dim=0)
+
+    def __getitem__(self, idx):
+        indices = torch.tensor([idx])
+        return torch.index_select(self.X, 0, indices), torch.index_select(self.Y, 0, indices)
+
+
+
+def get_train_test_sets(input_files, gap_to_prediction_frame, gap_to_calc_embedding, test_set_size):
+
+    # init dataFrames for datasets
+    X = pd.DataFrame()
+    Y = pd.DataFrame()
+
+    for input_file in input_files:
+        # load data of input_file
+        result_excel_path = "/home/gilnetanel/Desktop/results/" + input_file + ".xlsx"
+        df = pd.read_excel(result_excel_path, header=None)
+        embedding_format = embedding_formats_dict.get(embedding_format_key)
+        data_set = get_values_according2_embedding_format(df, embedding_format)
+
+        # input size needs to be even
+        input_size = data_set.shape[0]
+        assert input_size % 2 == 0
+
+        # generate the dataset for input file
+        X_embedding1 = data_set.iloc[:, :-(gap_to_prediction_frame+gap_to_calc_embedding)]
+        X_embedding2 = data_set.iloc[:, gap_to_calc_embedding:-gap_to_prediction_frame]
+        subtract = lambda s1, s2: s1.subtract(s2)
+        X_embedding_differences = X_embedding1.combine(X_embedding2, subtract)
+        X_input_file = pd.concat([X_embedding1, X_embedding_differences])
+        Y_input_file = data_set.iloc[:, gap_to_prediction_frame:]
+
+        # add dataset of input file to the overall dataset
+        X = pd.concat([X, X_input_file], axis=1)
+        Y = pd.concat([Y, Y_input_file], axis=1)
+
+    # split the dataset into training and test sets
+    Xtrain = X.iloc[:, :-test_set_size]
+    Ytrain = Y.iloc[:, :-test_set_size]
+    Xtest = X.iloc[:, -test_set_size:]
+    Ytest = Y.iloc[:, -test_set_size:]
+
+    # convert dataFrames to tensors
+    Xtrain = (torch.tensor(Xtrain.to_numpy())).to(torch.float32)
+    Ytrain = (torch.tensor(Ytrain.to_numpy())).to(torch.float32)
+    Xtest = (torch.tensor(Xtest.to_numpy())).to(torch.float32)
+    Ytest = (torch.tensor(Ytest.to_numpy())).to(torch.float32)
+
+    return torch.transpose(Xtrain, 0, 1), torch.transpose(Ytrain, 0, 1), torch.transpose(Xtest, 0, 1), torch.transpose(Ytest, 0, 1), input_size, embedding_format
+
+
+def plot_losses(test_losses):
+    # x axis values
+    x = range(len(test_losses))
+
+    # plotting the points
+    plt.plot(x, test_losses)
+
+    # naming the x-axis
+    plt.xlabel('epoch')
+    # naming the y-axis
+    plt.ylabel('test loss')
+
+    # giving a title to my graph
+    plt.title('Test loss VS Epoch')
+
+    # function to show the plot
+    # plt.show()
+
+    plt.savefig("/home/gilnetanel/Desktop/trained_models/test_losses_graph.png")
+
+    plt.close()
+
+
+def get_values_according2_embedding_format(df, embedding_format):
+    embeddings_features = df.iloc[:-6, :]
+    rgb_features = df.iloc[-6:-3, :]
+    hsv_features = df.iloc[-3:, :]
+
+    match embedding_format:
+        case "full_embeddings":
+            return df
+        case "embeddings_only":
+            return embeddings_features
+        case "embedding_rgb":
+            return pd.concat([embeddings_features, rgb_features], axis=0)
+        case "embedding_hsv":
+            return pd.concat([embeddings_features, hsv_features], axis=0)
+        case "rgb_hsv":
+            return pd.concat([rgb_features, hsv_features], axis=0)
+        case "rgb":
+            return rgb_features
+        case "hsv":
+            return hsv_features
+
+
+embedding_formats_dict = {
+    "1": "full_embeddings",
+    "2": "embeddings_only",
+    "3": "embedding_rgb",
+    "4": "embedding_hsv",
+    "5": "rgb_hsv",
+    "6": "rgb",
+    "7": "hsv"
+}
+
+# input size for the NeuralNetwork
+input_size = 0
+
+if __name__ == "__main__":
+
+    # configure settings
+    embedding_format_key = "2"
+    input_files = ["dinov2_vitb14_egg1"]
+    prediction_time = 60  # time gap to predicate (in seconds)
+    calc_embedding_time = 5  # time to embedding to calc difference from current embedding (in seconds)
+    video_fps = 30  # make sure your video was filmed in 30 fps. make sure your video in normal speed (not double)
+    test_set_size = 100  # number of frames for the test set
+    n_epochs = 200  # number of epochs to run
+    batch_size = 100  # size of each batch
+
+    gap_to_prediction_frame = int(prediction_time * video_fps)
+    gap_to_calc_embedding = int(calc_embedding_time * video_fps)
+    Xtrain, Ytrain, Xtest, Ytest, input_size, embedding_format = get_train_test_sets(input_files, gap_to_prediction_frame, gap_to_calc_embedding, test_set_size)
+
+    # set datasets and dataloaders
+    train_dataset = EmbeddingsDataset(Xtrain, Ytrain)
+    test_dataset = EmbeddingsDataset(Xtest, Ytest)
+    train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+    test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
+
+    # creates model instance and move it to cuda
+    model = NeuralNetwork()
+    model.cuda()
+
+    # loss
+    loss_func = nn.CosineEmbeddingLoss()
+
+    # optimizer
+    optimizer = torch.optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
+
+    # statistics
+    best_test_loss = float('inf')
+    test_losses = []
+
+    for epoch in range(n_epochs):
+        # make sure gradient tracking is on
+        model.train(True)
+        for data in train_dataloader:
+            # take a batch
+            Xbatch, Ybatch = data
+            # zero gradients
+            optimizer.zero_grad()
+            # forward pass
+            Y_pred = model(Xbatch.cuda()).cpu()
+            # compute the loss and its gradients
+            loss = loss_func(Y_pred, Ybatch, torch.ones(Y_pred.shape[0]))
+            loss.backward()
+            # update weights
+            optimizer.step()
+            # print progress
+
+        # evaluate model at end of epoch on test_set
+        model.eval()
+        Y_pred = model(Xtest.cuda()).cpu()
+        test_loss = loss_func(Y_pred, Ytest, torch.ones(Y_pred.shape[0]))
+        test_losses.append(test_loss.item())
+        print(f"End of epoch {epoch}, test_loss {test_loss}")
+
+        # track the best performance and save the model's state
+        if test_loss < best_test_loss:
+            best_test_loss = test_loss
+            model_save_path = "/home/gilnetanel/Desktop/trained_models/" + embedding_format + ".pickle"
+            torch.save(model.state_dict(), model_save_path)
+
+    plot_losses(test_losses)
