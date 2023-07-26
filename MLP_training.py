@@ -53,9 +53,8 @@ def get_train_test_sets(input_files, gap_to_prediction_frame, gap_to_calc_embedd
         embedding_format = embedding_formats_dict.get(embedding_format_key)
         data_set = get_values_according2_embedding_format(df, embedding_format)
 
-        # input size needs to be even
-        embedding_size = data_set.shape[0]
-        assert embedding_size % 2 == 0
+        # check embedding_size is correct
+        assert embedding_size == data_set.shape[0]
 
         # generate the dataset for input file
         X_embedding1 = data_set.iloc[:, :-(gap_to_prediction_frame+gap_to_calc_embedding)]
@@ -80,7 +79,7 @@ def get_train_test_sets(input_files, gap_to_prediction_frame, gap_to_calc_embedd
     # split the dataset into training and test sets
     Xtrain, Xtest, Ytrain, Ytest = train_test_split(X, Y, test_size=test_set_size, random_state=42, shuffle=True)
 
-    return Xtrain, Xtest, Ytrain, Ytest, embedding_size, embedding_format
+    return Xtrain, Xtest, Ytrain, Ytest, embedding_format
 
 
 def plot_losses(test_losses):
@@ -139,8 +138,8 @@ embedding_formats_dict = {
     "7": "hsv"
 }
 
-# input size for the NeuralNetwork
-embedding_size = 0
+# input size for the NeuralNetwork. Default is embeddings from dinov2_vitb14 with size of 768
+embedding_size = 768
 
 if __name__ == "__main__":
 
@@ -156,7 +155,7 @@ if __name__ == "__main__":
 
     gap_to_prediction_frame = int(prediction_time * video_fps)
     gap_to_calc_embedding = int(calc_embedding_time * video_fps)
-    Xtrain, Xtest, Ytrain, Ytest, embedding_size, embedding_format = get_train_test_sets(input_files, gap_to_prediction_frame, gap_to_calc_embedding, test_set_size)
+    Xtrain, Xtest, Ytrain, Ytest, embedding_format = get_train_test_sets(input_files, gap_to_prediction_frame, gap_to_calc_embedding, test_set_size)
 
     # set datasets and dataloaders
     train_dataset = EmbeddingsDataset(Xtrain, Ytrain)
