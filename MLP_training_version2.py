@@ -4,6 +4,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader
+from sklearn.model_selection import train_test_split
 
 
 class NeuralNetwork(nn.Module):
@@ -11,13 +12,13 @@ class NeuralNetwork(nn.Module):
         super().__init__()
         self.flatten = nn.Flatten()
         self.linear_relu_stack = nn.Sequential(
-            nn.Linear(2 * input_size, input_size // 2),
+            nn.Linear(2 * embedding_size, embedding_size // 2),
             nn.ReLU(),
-            nn.Linear(input_size // 2, input_size // 4),
+            nn.Linear(embedding_size // 2, embedding_size // 4),
             nn.ReLU(),
-            nn.Linear(input_size // 4, 3),
+            nn.Linear(embedding_size // 4, 3),
             nn.ReLU(),
-            nn.Linear(3, input_size),
+            nn.Linear(3, embedding_size),
         )
 
     def forward(self, x):
@@ -39,7 +40,6 @@ class EmbeddingsDataset(Dataset):
         return torch.index_select(self.X, 0, indices), torch.index_select(self.Y, 0, indices)
 
 
-
 def get_train_test_sets(input_files, gap_to_prediction_frame, gap_to_calc_embedding, test_set_size):
 
     # init dataFrames for datasets
@@ -54,34 +54,33 @@ def get_train_test_sets(input_files, gap_to_prediction_frame, gap_to_calc_embedd
         data_set = get_values_according2_embedding_format(df, embedding_format)
 
         # input size needs to be even
-        input_size = data_set.shape[0]
-        assert input_size % 2 == 0
+        embedding_size = data_set.shape[0]
+        assert embedding_size % 2 == 0
 
         # generate the dataset for input file
         X_embedding1 = data_set.iloc[:, :-(gap_to_prediction_frame+gap_to_calc_embedding)]
         X_embedding2 = data_set.iloc[:, gap_to_calc_embedding:-gap_to_prediction_frame]
+
+        new_col = np.arange(X_embedding2.shape[1]).tolist()
+        X_embedding2.columns = new_col
+
         subtract = lambda s1, s2: s1.subtract(s2)
         X_embedding_differences = X_embedding1.combine(X_embedding2, subtract)
         X_input_file = pd.concat([X_embedding1, X_embedding_differences])
-        Y_input_file = data_set.iloc[:, gap_to_prediction_frame:]
+        Y_input_file = data_set.iloc[:, gap_to_prediction_frame:-gap_to_calc_embedding]
 
         # add dataset of input file to the overall dataset
         X = pd.concat([X, X_input_file], axis=1)
         Y = pd.concat([Y, Y_input_file], axis=1)
 
+    # convert dataFrames to tensors and transpose to common shapes: (num_samples, features_size)
+    X = torch.transpose((torch.tensor(X.to_numpy())).to(torch.float32), 0, 1)
+    Y = torch.transpose((torch.tensor(Y.to_numpy())).to(torch.float32), 0, 1)
+
     # split the dataset into training and test sets
-    Xtrain = X.iloc[:, :-test_set_size]
-    Ytrain = Y.iloc[:, :-test_set_size]
-    Xtest = X.iloc[:, -test_set_size:]
-    Ytest = Y.iloc[:, -test_set_size:]
+    Xtrain, Xtest, Ytrain, Ytest = train_test_split(X, Y, test_size=test_set_size, random_state=42, shuffle=True)
 
-    # convert dataFrames to tensors
-    Xtrain = (torch.tensor(Xtrain.to_numpy())).to(torch.float32)
-    Ytrain = (torch.tensor(Ytrain.to_numpy())).to(torch.float32)
-    Xtest = (torch.tensor(Xtest.to_numpy())).to(torch.float32)
-    Ytest = (torch.tensor(Ytest.to_numpy())).to(torch.float32)
-
-    return torch.transpose(Xtrain, 0, 1), torch.transpose(Ytrain, 0, 1), torch.transpose(Xtest, 0, 1), torch.transpose(Ytest, 0, 1), input_size, embedding_format
+    return Xtrain, Xtest, Ytrain, Ytest, embedding_size, embedding_format
 
 
 def plot_losses(test_losses):
@@ -103,6 +102,7 @@ def plot_losses(test_losses):
     # plt.show()
 
     plt.savefig("/home/gilnetanel/Desktop/trained_models/test_losses_graph.png")
+    print("Saved test_losses_graph")
 
     plt.close()
 
@@ -140,7 +140,7 @@ embedding_formats_dict = {
 }
 
 # input size for the NeuralNetwork
-input_size = 0
+embedding_size = 0
 
 if __name__ == "__main__":
 
@@ -150,13 +150,13 @@ if __name__ == "__main__":
     prediction_time = 60  # time gap to predicate (in seconds)
     calc_embedding_time = 5  # time to embedding to calc difference from current embedding (in seconds)
     video_fps = 30  # make sure your video was filmed in 30 fps. make sure your video in normal speed (not double)
-    test_set_size = 100  # number of frames for the test set
-    n_epochs = 200  # number of epochs to run
+    test_set_size = 0.25  # portion of test_set size from dataset
+    n_epochs = 2000  # number of epochs to run
     batch_size = 100  # size of each batch
 
     gap_to_prediction_frame = int(prediction_time * video_fps)
     gap_to_calc_embedding = int(calc_embedding_time * video_fps)
-    Xtrain, Ytrain, Xtest, Ytest, input_size, embedding_format = get_train_test_sets(input_files, gap_to_prediction_frame, gap_to_calc_embedding, test_set_size)
+    Xtrain, Xtest, Ytrain, Ytest, embedding_size, embedding_format = get_train_test_sets(input_files, gap_to_prediction_frame, gap_to_calc_embedding, test_set_size)
 
     # set datasets and dataloaders
     train_dataset = EmbeddingsDataset(Xtrain, Ytrain)
@@ -178,6 +178,8 @@ if __name__ == "__main__":
     best_test_loss = float('inf')
     test_losses = []
 
+    flatten = nn.Flatten()
+
     for epoch in range(n_epochs):
         # make sure gradient tracking is on
         model.train(True)
@@ -189,13 +191,13 @@ if __name__ == "__main__":
             # forward pass
             Y_pred = model(Xbatch.cuda()).cpu()
             # compute the loss and its gradients
-            loss = loss_func(Y_pred, Ybatch, torch.ones(Y_pred.shape[0]))
+            loss = loss_func(Y_pred, flatten(Ybatch), torch.ones(Y_pred.shape[0]))
             loss.backward()
             # update weights
             optimizer.step()
             # print progress
 
-        # evaluate model at end of epoch on test_set
+        # at end of epoch, evaluate model on test_set
         model.eval()
         Y_pred = model(Xtest.cuda()).cpu()
         test_loss = loss_func(Y_pred, Ytest, torch.ones(Y_pred.shape[0]))
@@ -205,7 +207,7 @@ if __name__ == "__main__":
         # track the best performance and save the model's state
         if test_loss < best_test_loss:
             best_test_loss = test_loss
-            model_save_path = "/home/gilnetanel/Desktop/trained_models/" + embedding_format + ".pickle"
+            model_save_path = "/home/gilnetanel/Desktop/trained_models/" + embedding_format
             torch.save(model.state_dict(), model_save_path)
 
     plot_losses(test_losses)
