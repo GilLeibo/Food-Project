@@ -1,7 +1,10 @@
-import pandas as pd
-import numpy as np
+import math
+import statistics
 import torch
 import torch.nn as nn
+import torchvision
+import torchvision.transforms as T
+from tqdm import tqdm
 
 
 class NeuralNetwork(nn.Module):
@@ -24,36 +27,24 @@ class NeuralNetwork(nn.Module):
         return logits
 
 
-def get_values_according2_embedding_format(df, embedding_format):
-    embeddings_features = df.iloc[:-6, :]
-    rgb_features = df.iloc[-6:-3, :]
-    hsv_features = df.iloc[-3:, :]
-
-    match embedding_format:
-        case "full_embeddings":
-            return df
-        case "embeddings_only":
-            return embeddings_features
-        case "embedding_rgb":
-            return pd.concat([embeddings_features, rgb_features], axis=0)
-        case "embedding_hsv":
-            return pd.concat([embeddings_features, hsv_features], axis=0)
-        case "rgb_hsv":
-            return pd.concat([rgb_features, hsv_features], axis=0)
-        case "rgb":
-            return rgb_features
-        case "hsv":
-            return hsv_features
+def get_model(model_name):
+    match model_name:
+        case "dinov2_vits14":
+            dinov2_vits14 = torch.hub.load('facebookresearch/dinov2', 'dinov2_vits14')
+            return dinov2_vits14
+        case "dinov2_vitb14":
+            dinov2_vitb14 = torch.hub.load('facebookresearch/dinov2', 'dinov2_vitb14')
+            return dinov2_vitb14
+        case "dinov2_vitl14":
+            dinov2_vitl14 = torch.hub.load('facebookresearch/dinov2', 'dinov2_vitl14')
+            return dinov2_vitl14
+        case "dinov2_vitg14":
+            dinov2_vitg14 = torch.hub.load('facebookresearch/dinov2', 'dinov2_vitg14')
+            return dinov2_vitg14
 
 
-embedding_formats_dict = {
-    "1": "full_embeddings",
-    "2": "embeddings_only",
-    "3": "embedding_rgb",
-    "4": "embedding_hsv",
-    "5": "rgb_hsv",
-    "6": "rgb",
-    "7": "hsv"
+mean_references_dict = {
+    "egg":
 }
 
 # input size for the NeuralNetwork. Default is embeddings from dinov2_vitb14 with size of 768
@@ -62,22 +53,69 @@ embedding_size = 768
 if __name__ == "__main__":
 
     # configure settings
-    input_file = "dinov2_vitb14_egg1"
-    model_name = "embeddings_only"
-    model_save_path = "/home/gilnetanel/Desktop/trained_models/" + model_name
-    embedding_format_key = "2"
-    prediction_time = 60  # time gap to predicate (in seconds)
+    food_type = "egg"
+    input_file = "egg1_full"
+    embedding_model_name = "dinov2_vitb14"
+    trained_model_name = "embeddings_only"
     video_fps = 30  # make sure your video was filmed in 30 fps. make sure your video in normal speed (not double)
+    embedding_distances = 0.001
 
-    gap_to_prediction_frame = int(prediction_time * video_fps)
+    # paths
+    trained_model_path = "/home/gilnetanel/Desktop/trained_models/" + trained_model_name
+    input_file_path = "/home/gilnetanel/Desktop/input/" + input_file + ".mp4"
 
-    # load model and move it to cuda
-    model = NeuralNetwork()
-    model.load_state_dict(torch.load(model_save_path))
-    model.cuda()
+    # cuda memory handling:
+    torch.cuda.empty_cache()
 
-    # load data of input_file
-    result_excel_path = "/home/gilnetanel/Desktop/results/" + input_file + ".xlsx"
-    df = pd.read_excel(result_excel_path, header=None)
-    embedding_format = embedding_formats_dict.get(embedding_format_key)
-    data_set = get_values_according2_embedding_format(df, embedding_format)
+    # load models and move to cuda
+    trained_model = NeuralNetwork()
+    trained_model.load_state_dict(torch.load(trained_model_path))
+    trained_model.cuda()
+    trained_model.eval()
+
+    embedding_model = get_model(embedding_model_name)
+    embedding_model.cuda()
+    embedding_model.eval()
+
+    # load video and get frames
+    torchvision.set_video_backend("pyav")
+    video_path = input_file_path
+    video = torchvision.io.VideoReader(video_path, "video")
+    video_fps_input = (video.get_metadata().get('video')).get('fps')[0]
+
+    # make sure input fps is equivalent to configure video_fps
+    assert video_fps_input == video_fps
+
+    # mean_reference to predict burn
+    mean_reference = mean_references_dict.get(food_type)
+
+    for frame in tqdm(video):
+        cropped_img = frame['data']
+
+        # resize frame according to patches size and set dtype
+        patch_size = 14  # as defined in assert in the model
+        resize_height = (math.ceil(cropped_img.size(dim=1) / patch_size)) * patch_size
+        resize_width = (math.ceil(cropped_img.size(dim=2) / patch_size)) * patch_size
+        transform = torch.nn.Sequential(
+            T.Resize((resize_height, resize_width), antialias=True),
+            T.ConvertImageDtype(torch.float32)
+        )
+        transformed_frame = transform(cropped_img)
+
+        # make inference
+        ready_frame = torch.unsqueeze(transformed_frame, 0)
+        embedding = embedding_model(ready_frame.cuda())  # inference
+        # predict
+        future_embedding = trained_model(embedding.cuda())
+        # move to cpu
+        ready_frame.cpu()
+        embedding.cpu()
+        future_embedding.cpu()
+        mean_future_embedding = statistics.mean(future_embedding)
+
+        if abs(mean_future_embedding-mean_reference) < embedding_distances:
+            # show frame:
+            img = torchvision.transforms.ToPILImage()(transformed_frame)
+            img.show()
+            print("Food is ready")
+            break
