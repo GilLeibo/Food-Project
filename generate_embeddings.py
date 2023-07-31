@@ -174,7 +174,9 @@ def add_means_to_embeddings(file_name, model_name):
 
 def main():
     # configure settings
-    input_files = ["egg2", "pancake1"]
+    input_files = ["bagle", "brocolli", "burek", "casserole", "cheese", "cheese_sandwich", "cheesy_sticks",
+                   "cherry_pie", "cinabbon", "cinnamon", "croissant", "egg", "nachos", "pastry", "pizza1",
+                   "pizza2", "pizza3", "pizza4", "sandwich"]
     model_name = "dinov2_vitb14"
 
     for file in input_files:
