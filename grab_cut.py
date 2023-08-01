@@ -58,7 +58,7 @@ if __name__ == '__main__':
             "egg1_full": [60, 80, 920, 650],
             "egg1_edge": [0, 70, 300, 600],
             "egg1_edge_long": [0, 70, 300, 600],
-            "egg2_full": [200, 270, 830, 450],
+            "egg2_full": [180, 270, 870, 450],
         }
         rect = rect_dict[input_file]
 
