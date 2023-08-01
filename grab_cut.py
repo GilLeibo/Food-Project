@@ -25,10 +25,11 @@ def apply_grabcut(frame, mask, rect):
 
 if __name__ == '__main__':
     # Set input file
-    input_file = "egg1_full"
+    input_file = "egg2_full"
+    input_file_path = "/home/gilnetanel/Desktop/input/" + input_file
 
     # Load the video
-    cap = cv2.VideoCapture(input_file + '_raw.mp4')
+    cap = cv2.VideoCapture(input_file_path + '_raw.mp4')
     fps = int(cap.get(cv2.CAP_PROP_FPS))
     width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
@@ -56,7 +57,8 @@ if __name__ == '__main__':
             "egg1": [70, 30, 760, 550],
             "egg1_full": [60, 80, 920, 650],
             "egg1_edge": [0, 70, 300, 600],
-            "egg1_edge_long": [0, 70, 300, 600]
+            "egg1_edge_long": [0, 70, 300, 600],
+            "egg2_full": [200, 270, 830, 450],
         }
         rect = rect_dict[input_file]
 
