@@ -40,8 +40,7 @@ class EmbeddingsDataset(Dataset):
         return torch.index_select(self.X, 0, indices), torch.index_select(self.Y, 0, indices)
 
 
-def get_train_test_sets(input_files, gap_to_prediction_frame, gap_to_calc_embedding, test_set_size):
-
+def get_train_test_sets(input_files, gap_to_prediction_frame, gap_to_calc_embedding, test_set_size, embedding_format):
     # init dataFrames for datasets
     X = pd.DataFrame()
     Y = pd.DataFrame()
@@ -50,23 +49,22 @@ def get_train_test_sets(input_files, gap_to_prediction_frame, gap_to_calc_embedd
         # load data of input_file
         result_excel_path = "/home/gilnetanel/Desktop/results/" + input_file + ".xlsx"
         df = pd.read_excel(result_excel_path, header=None)
-        embedding_format = embedding_formats_dict.get(embedding_format_key)
         data_set = get_values_according2_embedding_format(df, embedding_format)
 
         # check embedding_size is correct
         assert embedding_size == data_set.shape[0]
 
         # generate the dataset for input file
-        X_embedding1 = data_set.iloc[:, :-(gap_to_prediction_frame+gap_to_calc_embedding)]
-        X_embedding2 = data_set.iloc[:, gap_to_calc_embedding:-gap_to_prediction_frame]
+        X_embedding1 = data_set.iloc[:, gap_to_calc_embedding:-gap_to_prediction_frame]
+        X_embedding2 = data_set.iloc[:, :-(gap_to_prediction_frame + gap_to_calc_embedding)]
 
-        new_col = np.arange(X_embedding2.shape[1]).tolist()
-        X_embedding2.columns = new_col
+        new_col = np.arange(X_embedding1.shape[1]).tolist()
+        X_embedding1.columns = new_col
 
         subtract = lambda s1, s2: s1.subtract(s2)
         X_embedding_differences = X_embedding1.combine(X_embedding2, subtract)
         X_input_file = pd.concat([X_embedding1, X_embedding_differences])
-        Y_input_file = data_set.iloc[:, gap_to_prediction_frame:-gap_to_calc_embedding]
+        Y_input_file = data_set.iloc[:, gap_to_calc_embedding + gap_to_prediction_frame:]
 
         # add dataset of input file to the overall dataset
         X = pd.concat([X, X_input_file], axis=1)
@@ -79,10 +77,10 @@ def get_train_test_sets(input_files, gap_to_prediction_frame, gap_to_calc_embedd
     # split the dataset into training and test sets
     Xtrain, Xtest, Ytrain, Ytest = train_test_split(X, Y, test_size=test_set_size, random_state=42, shuffle=True)
 
-    return Xtrain, Xtest, Ytrain, Ytest, embedding_format
+    return Xtrain, Xtest, Ytrain, Ytest
 
 
-def plot_losses(test_losses):
+def plot_losses(test_losses, input_format, embedding_format):
     # x axis values
     x = range(len(test_losses))
 
@@ -95,12 +93,13 @@ def plot_losses(test_losses):
     plt.ylabel('test loss')
 
     # giving a title to my graph
-    plt.title('Test loss VS Epoch')
+    plt.title('Test loss VS Epoch. Input_format: ' + input_format)
 
     # function to show the plot
     # plt.show()
 
-    plt.savefig("/home/gilnetanel/Desktop/trained_models/test_losses_graph.png")
+    plt.savefig(
+        "/home/gilnetanel/Desktop/trained_models/test_losses_graph_" + embedding_format + "_" + input_format + ".png")
     print("Saved test_losses_graph")
 
     plt.close()
@@ -138,6 +137,12 @@ embedding_formats_dict = {
     "7": "hsv"
 }
 
+input_files_dict = {
+    "self_videos": ["dinov2_vitb14_egg2_full"],
+    "youtube_videos": ["bagle", "brocolli", "burek", "casserole", "cheese_sandwich", "cheesy_sticks", "cherry_pie",
+                       "cinabbon", "cinnamon", "croissant", "egg", "nachos", "pastry", "pizza1", "pizza2"]
+}
+
 # input size for the NeuralNetwork. Default is embeddings from dinov2_vitb14 with size of 768
 embedding_size = 768
 
@@ -145,17 +150,21 @@ if __name__ == "__main__":
 
     # configure settings
     embedding_format_key = "2"
-    input_files = ["dinov2_vitb14_egg1"]
-    prediction_time = 60  # time gap to predicate (in seconds)
+    input_format = "self_videos"  # self_videos - dataset is videos we filmed, youtube_videos - dataset is videos from youtube
+    prediction_time = 30  # time gap to predicate (in seconds)
     calc_embedding_time = 5  # time to embedding to calc difference from current embedding (in seconds)
     video_fps = 30  # make sure your video was filmed in 30 fps. make sure your video in normal speed (not double)
     test_set_size = 0.25  # portion of test_set size from dataset
-    n_epochs = 2000  # number of epochs to run
+    n_epochs = 550  # number of epochs to run
     batch_size = 100  # size of each batch
+    lr = 0.1  # learning rate for SGD optimizer
 
     gap_to_prediction_frame = int(prediction_time * video_fps)
     gap_to_calc_embedding = int(calc_embedding_time * video_fps)
-    Xtrain, Xtest, Ytrain, Ytest, embedding_format = get_train_test_sets(input_files, gap_to_prediction_frame, gap_to_calc_embedding, test_set_size)
+    input_files = input_files_dict.get(input_format)
+    embedding_format = embedding_formats_dict.get(embedding_format_key)
+    Xtrain, Xtest, Ytrain, Ytest = get_train_test_sets(input_files, gap_to_prediction_frame,
+                                                       gap_to_calc_embedding, test_set_size, embedding_format)
 
     # set datasets and dataloaders
     train_dataset = EmbeddingsDataset(Xtrain, Ytrain)
@@ -171,7 +180,7 @@ if __name__ == "__main__":
     loss_func = nn.CosineEmbeddingLoss()
 
     # optimizer
-    optimizer = torch.optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
+    optimizer = torch.optim.SGD(model.parameters(), lr=lr, momentum=0.9)
 
     # statistics
     best_test_loss = float('inf')
@@ -206,7 +215,7 @@ if __name__ == "__main__":
         # track the best performance and save the model's state
         if test_loss < best_test_loss:
             best_test_loss = test_loss
-            model_save_path = "/home/gilnetanel/Desktop/trained_models/" + embedding_format
+            model_save_path = "/home/gilnetanel/Desktop/trained_models/" + embedding_format + "_" + input_format
             torch.save(model.state_dict(), model_save_path)
 
-    plot_losses(test_losses)
+    plot_losses(test_losses, input_format, embedding_format)
