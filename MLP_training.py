@@ -137,12 +137,13 @@ embedding_formats_dict = {
     "7": "hsv"
 }
 
+# each value consists of: (learning_rate, number_epochs, input_files)
 input_files_dict = {
-    "self_videos": ["dinov2_vitb14_egg2_full"],
-    "youtube_videos": ["dinov2_vitb14_bagle", "dinov2_vitb14_brocolli", "dinov2_vitb14_burek", "dinov2_vitb14_casserole",
+    "self_videos": (0.1, 600, ["dinov2_vitb14_egg2_full"]),
+    "youtube_videos": (0.08, 500, ["dinov2_vitb14_bagle", "dinov2_vitb14_brocolli", "dinov2_vitb14_burek", "dinov2_vitb14_casserole",
                        "dinov2_vitb14_cheese_sandwich", "dinov2_vitb14_cheesy_sticks", "dinov2_vitb14_cherry_pie",
                        "dinov2_vitb14_cinabbon", "dinov2_vitb14_cinnamon", "dinov2_vitb14_croissant", "dinov2_vitb14_egg",
-                       "dinov2_vitb14_nachos", "dinov2_vitb14_pastry", "dinov2_vitb14_pizza1", "dinov2_vitb14_pizza2"]
+                       "dinov2_vitb14_nachos", "dinov2_vitb14_pastry", "dinov2_vitb14_pizza1", "dinov2_vitb14_pizza2"])
 }
 
 # input size for the NeuralNetwork. Default is embeddings from dinov2_vitb14 with size of 768
@@ -152,18 +153,14 @@ if __name__ == "__main__":
 
     # configure settings
     embedding_format_key = "2"
-    input_format = "youtube_videos"  # self_videos - dataset is videos we filmed, youtube_videos - dataset is videos from youtube
-    prediction_time = 30  # time gap to predicate (in seconds)
-    calc_embedding_time = 5  # time to embedding to calc difference from current embedding (in seconds)
-    video_fps = 30  # make sure your video was filmed in 30 fps. make sure your video in normal speed (not double)
+    input_format = "self_videos"  # self_videos - dataset is videos we filmed, youtube_videos - dataset is videos from youtube
     test_set_size = 0.25  # portion of test_set size from dataset
-    n_epochs = 550  # number of epochs to run
     batch_size = 100  # size of each batch
-    lr = 0.1  # learning rate for SGD optimizer
+    gap_to_prediction_frame = 450   # gap (in frames) to prediction frame
+    gap_to_calc_embedding = 90  # gap (in frames) to the embedding which will be used to calc differentiation from current embedding
 
-    gap_to_prediction_frame = int(prediction_time * video_fps)
-    gap_to_calc_embedding = int(calc_embedding_time * video_fps)
-    input_files = input_files_dict.get(input_format)
+    # init values
+    lr, n_epochs, input_files = input_files_dict.get(input_format)
     embedding_format = embedding_formats_dict.get(embedding_format_key)
     Xtrain, Xtest, Ytrain, Ytest = get_train_test_sets(input_files, gap_to_prediction_frame,
                                                        gap_to_calc_embedding, test_set_size, embedding_format)
