@@ -139,8 +139,8 @@ embedding_formats_dict = {
 
 # each value consists of: (learning_rate, number_epochs, input_files)
 input_files_dict = {
-    "self_videos": (0.1, 600, ["dinov2_vitb14_egg2_full"]),
-    "youtube_videos": (0.08, 500, ["dinov2_vitb14_bagle", "dinov2_vitb14_brocolli", "dinov2_vitb14_burek", "dinov2_vitb14_casserole",
+    "self_videos": (0.12, 500, ["dinov2_vitb14_egg2_full"]),
+    "youtube_videos": (0.09, 600, ["dinov2_vitb14_bagle", "dinov2_vitb14_brocolli", "dinov2_vitb14_burek", "dinov2_vitb14_casserole",
                        "dinov2_vitb14_cheese_sandwich", "dinov2_vitb14_cheesy_sticks", "dinov2_vitb14_cherry_pie",
                        "dinov2_vitb14_cinabbon", "dinov2_vitb14_cinnamon", "dinov2_vitb14_croissant", "dinov2_vitb14_egg",
                        "dinov2_vitb14_nachos", "dinov2_vitb14_pastry", "dinov2_vitb14_pizza1", "dinov2_vitb14_pizza2"])
@@ -153,7 +153,7 @@ if __name__ == "__main__":
 
     # configure settings
     embedding_format_key = "2"
-    input_format = "self_videos"  # self_videos - dataset is videos we filmed, youtube_videos - dataset is videos from youtube
+    input_format = "youtube_videos"  # self_videos - dataset is videos we filmed, youtube_videos - dataset is videos from youtube
     test_set_size = 0.25  # portion of test_set size from dataset
     batch_size = 100  # size of each batch
     gap_to_prediction_frame = 450   # gap (in frames) to prediction frame
