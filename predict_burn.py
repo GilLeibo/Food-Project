@@ -43,22 +43,25 @@ def get_model(model_name):
             return dinov2_vitg14
 
 
-mean_references_dict = {
-    "egg":
-}
 
 # input size for the NeuralNetwork. Default is embeddings from dinov2_vitb14 with size of 768
+embedding_model_name = "dinov2_vitb14"
 embedding_size = 768
+embedding_format = "embeddings_only"
+
+
+trained_model_metadata = {
+    "self_videos": ("embeddings_only_self_videos.zip", "egg1_full", ),
+    "youtube_videos": ('embeddings_only_youtube_videos.zip', "pizza3", )
+}
 
 if __name__ == "__main__":
 
     # configure settings
-    food_type = "egg"
-    input_file = "egg1_full"
-    embedding_model_name = "dinov2_vitb14"
-    trained_model_name = "embeddings_only"
-    video_fps = 30  # make sure your video was filmed in 30 fps. make sure your video in normal speed (not double)
-    embedding_distances = 0.001
+    trained_model_data = "self_videos"
+
+    # init values
+    trained_model_name, input_file, mean_reference = trained_model_metadata.get(trained_model_data)
 
     # paths
     trained_model_path = "/home/gilnetanel/Desktop/trained_models/" + trained_model_name
@@ -81,13 +84,6 @@ if __name__ == "__main__":
     torchvision.set_video_backend("pyav")
     video_path = input_file_path
     video = torchvision.io.VideoReader(video_path, "video")
-    video_fps_input = (video.get_metadata().get('video')).get('fps')[0]
-
-    # make sure input fps is equivalent to configure video_fps
-    assert video_fps_input == video_fps
-
-    # mean_reference to predict burn
-    mean_reference = mean_references_dict.get(food_type)
 
     for frame in tqdm(video):
         cropped_img = frame['data']
