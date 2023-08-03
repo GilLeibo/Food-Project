@@ -140,7 +140,7 @@ embedding_formats_dict = {
 # each value consists of: (learning_rate, number_epochs, input_files)
 input_files_dict = {
     "self_videos": (0.12, 500, ["dinov2_vitb14_egg2_full"]),
-    "youtube_videos": (0.09, 600, ["dinov2_vitb14_bagle", "dinov2_vitb14_brocolli", "dinov2_vitb14_burek", "dinov2_vitb14_casserole",
+    "youtube_videos": (0.05, 600, ["dinov2_vitb14_bagle", "dinov2_vitb14_brocolli", "dinov2_vitb14_burek", "dinov2_vitb14_casserole",
                        "dinov2_vitb14_cheese_sandwich", "dinov2_vitb14_cheesy_sticks", "dinov2_vitb14_cherry_pie",
                        "dinov2_vitb14_cinabbon", "dinov2_vitb14_cinnamon", "dinov2_vitb14_croissant", "dinov2_vitb14_egg",
                        "dinov2_vitb14_nachos", "dinov2_vitb14_pastry", "dinov2_vitb14_pizza1", "dinov2_vitb14_pizza2"])
@@ -214,7 +214,7 @@ if __name__ == "__main__":
         # track the best performance and save the model's state
         if test_loss < best_test_loss:
             best_test_loss = test_loss
-            model_save_path = "/home/gilnetanel/Desktop/trained_models/" + embedding_format + "_" + input_format
+            model_save_path = "/home/gilnetanel/Desktop/trained_models/" + embedding_format + "_" + input_format + ".zip"
             torch.save(model.state_dict(), model_save_path)
 
     plot_losses(test_losses, input_format, embedding_format)
