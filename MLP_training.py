@@ -139,8 +139,10 @@ embedding_formats_dict = {
 
 input_files_dict = {
     "self_videos": ["dinov2_vitb14_egg2_full"],
-    "youtube_videos": ["bagle", "brocolli", "burek", "casserole", "cheese_sandwich", "cheesy_sticks", "cherry_pie",
-                       "cinabbon", "cinnamon", "croissant", "egg", "nachos", "pastry", "pizza1", "pizza2"]
+    "youtube_videos": ["dinov2_vitb14_bagle", "dinov2_vitb14_brocolli", "dinov2_vitb14_burek", "dinov2_vitb14_casserole",
+                       "dinov2_vitb14_cheese_sandwich", "dinov2_vitb14_cheesy_sticks", "dinov2_vitb14_cherry_pie",
+                       "dinov2_vitb14_cinabbon", "dinov2_vitb14_cinnamon", "dinov2_vitb14_croissant", "dinov2_vitb14_egg",
+                       "dinov2_vitb14_nachos", "dinov2_vitb14_pastry", "dinov2_vitb14_pizza1", "dinov2_vitb14_pizza2"]
 }
 
 # input size for the NeuralNetwork. Default is embeddings from dinov2_vitb14 with size of 768
@@ -150,7 +152,7 @@ if __name__ == "__main__":
 
     # configure settings
     embedding_format_key = "2"
-    input_format = "self_videos"  # self_videos - dataset is videos we filmed, youtube_videos - dataset is videos from youtube
+    input_format = "youtube_videos"  # self_videos - dataset is videos we filmed, youtube_videos - dataset is videos from youtube
     prediction_time = 30  # time gap to predicate (in seconds)
     calc_embedding_time = 5  # time to embedding to calc difference from current embedding (in seconds)
     video_fps = 30  # make sure your video was filmed in 30 fps. make sure your video in normal speed (not double)
