@@ -79,7 +79,6 @@ if __name__ == "__main__":
     trained_model.load_state_dict(torch.load(trained_model_path))
     trained_model.cuda()
     trained_model.eval()
-
     embedding_model = get_model(embedding_model_name)
     embedding_model.cuda()
     embedding_model.eval()
@@ -126,6 +125,7 @@ if __name__ == "__main__":
             future_embedding = trained_model(merged_embedding.cuda())
             future_embedding.cpu()
 
+        # move to cpu
         ready_frame.cpu()
         embedding.cpu()
 
