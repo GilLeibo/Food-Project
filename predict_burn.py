@@ -43,16 +43,15 @@ def get_model(model_name):
             return dinov2_vitg14
 
 
-
 # input size for the NeuralNetwork. Default is embeddings from dinov2_vitb14 with size of 768
 embedding_model_name = "dinov2_vitb14"
 embedding_size = 768
 embedding_format = "embeddings_only"
 
-
+# value format: (trained_model_name, file_name of video to predict, threshold)
 trained_model_metadata = {
-    "self_videos": ("embeddings_only_self_videos.zip", "egg1_full", ),
-    "youtube_videos": ('embeddings_only_youtube_videos.zip', "pizza3", )
+    "self_videos": ("embeddings_only_self_videos.zip", "egg1_full", 0.020918744234464534),
+    "youtube_videos": ('embeddings_only_youtube_videos.zip', "pizza3", 0.011921527609109505)
 }
 
 if __name__ == "__main__":
