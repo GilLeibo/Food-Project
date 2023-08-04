@@ -51,8 +51,8 @@ embedding_format = "embeddings_only"
 
 # value format: (trained_model_name, file_name of video to predict, threshold)
 trained_model_metadata = {
-    "self_videos": ("embeddings_only_self_videos.zip", "egg1_full", 0.020918744234464534),
-    "youtube_videos": ('embeddings_only_youtube_videos.zip', "pizza3", 0.011921527609109505)
+    "self_videos": ("embeddings_only_self_videos.zip", "egg1_full", 0.0135255147320975),
+    "youtube_videos": ('embeddings_only_youtube_videos.zip', "pizza3", 0.00999994077971596)
 }
 
 if __name__ == "__main__":
@@ -65,7 +65,7 @@ if __name__ == "__main__":
     assert gap_to_calc_embedding >= num_frames_to_average_threshold
 
     # init values
-    trained_model_name, input_file, mean_reference = trained_model_metadata.get(trained_model_data)
+    trained_model_name, input_file, threshold = trained_model_metadata.get(trained_model_data)
 
     # paths
     trained_model_path = "/home/gilnetanel/Desktop/trained_models/" + trained_model_name
@@ -108,13 +108,17 @@ if __name__ == "__main__":
         # make inference
         embedding = embedding_model(ready_frame.cuda())  # inference
 
+        # move to cpu
+        embedding = pd.DataFrame(embedding.cpu().detach().numpy())
+        ready_frame.cpu()
+
         # concat embedding to embeddings dataFrame
-        embeddings = pd.concat([embeddings, embedding], axis=1)
-        if embeddings.shape[1] > gap_to_calc_embedding:
+        embeddings = pd.concat([embeddings, embedding], axis=0)
+        if frame_num >= gap_to_calc_embedding:
 
             # get embedding to do calc differentiation vector
             differentiation_embedding_frame = frame_num-gap_to_calc_embedding
-            embedding2 = embeddings.iloc[:,differentiation_embedding_frame]
+            embedding2 = embeddings.iloc[:, differentiation_embedding_frame]
 
             # calc differentiation embedding and concat to embedding
             subtract = lambda s1, s2: s1.subtract(s2)
@@ -125,18 +129,14 @@ if __name__ == "__main__":
             future_embedding = trained_model(merged_embedding.cuda())
             future_embedding.cpu()
 
-        # move to cpu
-        ready_frame.cpu()
-        embedding.cpu()
+            # calc embeddings means
+            embeddings_for_threshold = embeddings.iloc[:, frame_num - num_frames_to_average_threshold:frame_num]
+            embeddings_means = embeddings_for_threshold.mean(axis=0)
+            predicted_mean = embeddings_means.mean()
 
-        # calc embeddings means
-        embeddings_for_threshold = embeddings.iloc[:, frame_num - num_frames_to_average_threshold:frame_num]
-        embeddings_means = embeddings_for_threshold.mean(axis=0)
-        predicted_mean = embeddings_means.mean()
-
-        if abs(predicted_mean-mean_reference) < embedding_distances:
-            # show frame:
-            img = torchvision.transforms.ToPILImage()(transformed_frame)
-            img.show()
-            print("Food is ready")
-            break
+            if predicted_mean >= threshold:
+                # show frame:
+                img = torchvision.transforms.ToPILImage()(transformed_frame)
+                img.show()
+                print("Food is ready")
+                break
