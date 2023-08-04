@@ -1,10 +1,11 @@
 import math
 import statistics
+
+import pandas as pd
 import torch
 import torch.nn as nn
 import torchvision
 import torchvision.transforms as T
-from tqdm import tqdm
 
 
 class NeuralNetwork(nn.Module):
@@ -58,6 +59,10 @@ if __name__ == "__main__":
 
     # configure settings
     trained_model_data = "self_videos"
+    gap_to_calc_embedding = 90
+    num_frames_to_average_threshold = 50
+
+    assert gap_to_calc_embedding >= num_frames_to_average_threshold
 
     # init values
     trained_model_name, input_file, mean_reference = trained_model_metadata.get(trained_model_data)
@@ -84,7 +89,10 @@ if __name__ == "__main__":
     video_path = input_file_path
     video = torchvision.io.VideoReader(video_path, "video")
 
-    for frame in tqdm(video):
+    # the dataframe to collect embeddings
+    embeddings = pd.DataFrame()
+
+    for frame_num, frame in enumerate(video):
         cropped_img = frame['data']
 
         # resize frame according to patches size and set dtype
@@ -96,19 +104,37 @@ if __name__ == "__main__":
             T.ConvertImageDtype(torch.float32)
         )
         transformed_frame = transform(cropped_img)
+        ready_frame = torch.unsqueeze(transformed_frame, 0)
 
         # make inference
-        ready_frame = torch.unsqueeze(transformed_frame, 0)
         embedding = embedding_model(ready_frame.cuda())  # inference
-        # predict
-        future_embedding = trained_model(embedding.cuda())
-        # move to cpu
+
+        # concat embedding to embeddings dataFrame
+        embeddings = pd.concat([embeddings, embedding], axis=1)
+        if embeddings.shape[1] > gap_to_calc_embedding:
+
+            # get embedding to do calc differentiation vector
+            differentiation_embedding_frame = frame_num-gap_to_calc_embedding
+            embedding2 = embeddings.iloc[:,differentiation_embedding_frame]
+
+            # calc differentiation embedding and concat to embedding
+            subtract = lambda s1, s2: s1.subtract(s2)
+            differences_embedding = embedding.combine(embedding2, subtract)
+            merged_embedding = pd.concat([embedding, differences_embedding])
+
+            # predict
+            future_embedding = trained_model(merged_embedding.cuda())
+            future_embedding.cpu()
+
         ready_frame.cpu()
         embedding.cpu()
-        future_embedding.cpu()
-        mean_future_embedding = statistics.mean(future_embedding)
 
-        if abs(mean_future_embedding-mean_reference) < embedding_distances:
+        # calc embeddings means
+        embeddings_for_threshold = embeddings.iloc[:, frame_num - num_frames_to_average_threshold:frame_num]
+        embeddings_means = embeddings_for_threshold.mean(axis=0)
+        predicted_mean = embeddings_means.mean()
+
+        if abs(predicted_mean-mean_reference) < embedding_distances:
             # show frame:
             img = torchvision.transforms.ToPILImage()(transformed_frame)
             img.show()
