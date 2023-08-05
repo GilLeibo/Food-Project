@@ -134,17 +134,17 @@ def get_values_according2_embedding_format(df, embedding_format):
             return hsv_features
 
 
-def plot_cosine_similarity(input_files, desired_embedding_formats_keys, model_name):
+def plot_cosine_similarity(input_files, desired_embedding_formats_keys, model_name, input_format):
     # delete model_name directory content if exist and create a new one
-    cmd1 = 'rm -r /home/gilnetanel/Desktop/Figures/Cosine/' + model_name
-    cmd2 = 'mkdir -p /home/gilnetanel/Desktop/Figures/Cosine/' + model_name
+    cmd1 = 'rm -r /home/gilnetanel/Desktop/Figures/Cosine/' + input_format
+    cmd2 = 'mkdir -p /home/gilnetanel/Desktop/Figures/Cosine/' + input_format
     subprocess.run(cmd1, shell=True)
     subprocess.run(cmd2, shell=True)
 
     for embedding_format_key in desired_embedding_formats_keys:
         embedding_format = embedding_formats_dict.get(embedding_format_key)
 
-        directory_path = '/home/gilnetanel/Desktop/Figures/Cosine/' + model_name + '/' + embedding_format
+        directory_path = '/home/gilnetanel/Desktop/Figures/Cosine/' + input_format + '/' + embedding_format
 
         # create new embedding_format_value directory
         cmd = 'mkdir -p ' + directory_path
@@ -152,36 +152,34 @@ def plot_cosine_similarity(input_files, desired_embedding_formats_keys, model_na
 
         cosine_similarities = {}
         for file in input_files:
-            file_name = model_name + '_' + file
-            values = plot_cosine_similarity_separately(file_name, directory_path, model_name, embedding_format)
-            cosine_similarities[file_name] = values
-            print("generated cosine similarity graph for input: " + file_name +
+            values = plot_cosine_similarity_separately(file, directory_path, model_name, embedding_format)
+            cosine_similarities[file] = values
+            print("generated cosine similarity graph for input: " + file +
                   " with embedding format: " + embedding_format)
 
         plot_all_cosine_similarities(cosine_similarities, directory_path, model_name, embedding_format)
         print("generated cosine similarity graph with all inputs")
 
 
-def plot_tsne3d(input_files, desired_embedding_formats_keys, model_name):
+def plot_tsne3d(input_files, desired_embedding_formats_keys, model_name, input_format):
     # delete model_name directory content if exist and create a new one
-    cmd1 = 'rm -r /home/gilnetanel/Desktop/Figures/Tsne3d/' + model_name
-    cmd2 = 'mkdir -p /home/gilnetanel/Desktop/Figures/Tsne3d/' + model_name
+    cmd1 = 'rm -r /home/gilnetanel/Desktop/Figures/Tsne3d/' + input_format
+    cmd2 = 'mkdir -p /home/gilnetanel/Desktop/Figures/Tsne3d/' + input_format
     subprocess.run(cmd1, shell=True)
     subprocess.run(cmd2, shell=True)
 
     for embedding_format_key in desired_embedding_formats_keys:
         embedding_format = embedding_formats_dict.get(embedding_format_key)
 
-        directory_path = '/home/gilnetanel/Desktop/Figures/Tsne3d/' + model_name + '/' + embedding_format
+        directory_path = '/home/gilnetanel/Desktop/Figures/Tsne3d/' + input_format + '/' + embedding_format
 
         # create new embedding_format_value directory
         cmd = 'mkdir -p ' + directory_path
         subprocess.run(cmd, shell=True)
 
         for file in input_files:
-            file_name = model_name + '_' + file
-            plot_tsne3d_graphs(file_name, directory_path, model_name, embedding_format)
-            print("generated tsne3d graph for input: " + file_name +
+            plot_tsne3d_graphs(file, directory_path, model_name, embedding_format)
+            print("generated tsne3d graph for input: " + file +
                   " with embedding format: " + embedding_format)
 
 
@@ -195,14 +193,27 @@ embedding_formats_dict = {
     "7": "hsv"
 }
 
+input_files_dict = {
+    "self_videos": (["dinov2_vitb14_egg1_full", "dinov2_vitb14_egg2_full", "dinov2_vitb14_pancake1_zoomed"]),
+    "youtube_videos": (["dinov2_vitb14_bagle", "dinov2_vitb14_brocolli", "dinov2_vitb14_burek", "dinov2_vitb14_casserole", "dinov2_vitb14_cheese",
+                       "dinov2_vitb14_cheese_sandwich", "dinov2_vitb14_cheesy_sticks", "dinov2_vitb14_cherry_pie",
+                       "dinov2_vitb14_cinabbon", "dinov2_vitb14_cinnamon", "dinov2_vitb14_croissant", "dinov2_vitb14_egg",
+                       "dinov2_vitb14_nachos", "dinov2_vitb14_pastry", "dinov2_vitb14_pizza1", "dinov2_vitb14_pizza2", "dinov2_vitb14_pizza3",
+                        "dinov2_vitb14_pizza4", "dinov2_vitb14_sandwich"])
+}
+
 if __name__ == '__main__':
     # configure settings
-    input_files = ["egg1_full", "egg2_full"]
-    desired_embedding_formats_keys = ["1", "2", "3", "4", "5", "6", "7"]
+    input_formats = ["self_videos", "youtube_videos"]
+    desired_embedding_formats_keys = ["2", "4", "7"]
     model_name = "dinov2_vitb14"
 
-    # plot cosine similarities graphs
-    plot_cosine_similarity(input_files, desired_embedding_formats_keys, model_name)
+    for input_format in input_formats:
+        # init
+        input_files = input_files_dict.get(input_format)
 
-    # plot tsne3d graphs
-    plot_tsne3d(input_files, desired_embedding_formats_keys, model_name)
+        # plot cosine similarities graphs
+        plot_cosine_similarity(input_files, desired_embedding_formats_keys, model_name, input_format)
+
+        # plot tsne3d graphs
+        plot_tsne3d(input_files, desired_embedding_formats_keys, model_name, input_format)
