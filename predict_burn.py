@@ -51,7 +51,7 @@ embedding_format = "embeddings_only"
 
 # value format: (trained_model_name, file_name of video to predict, threshold)
 trained_model_metadata = {
-    "self_videos": ("embeddings_only_self_videos.zip", "egg1_full", 0.015145331479015),
+    "self_videos": ("embeddings_only_self_videos.zip", "egg1_full", 0.0149259155525956),
     "youtube_videos": ('embeddings_only_youtube_videos.zip', "pizza3", 0.00999994077971596)
 }
 
@@ -146,7 +146,7 @@ if __name__ == "__main__":
                 if predicted_mean >= threshold:
                     # show frame:
                     img = torchvision.transforms.ToPILImage()(frame['data'])
-                    img.show()
+                    # img.show()
                     image_save_path = "/home/gilnetanel/Desktop/predict/" + input_file + "_" + str(frame_num) + ".png"
                     img.save(image_save_path)
                     print("Food is ready. Burned frame is: ", frame_num)
