@@ -69,12 +69,12 @@ def plot_all_cosine_similarities(cosine_similarities, directory_path, model_name
 
     # giving a title to my graph
     plt.title('Cosine similarity VS Frame\n embedding_format: ' + embedding_format + ', all inputs')
-    plt.legend()
+    lgd = plt.legend(bbox_to_anchor=(1.04, 0), loc="lower left")
 
     # function to show the plot
     # plt.show()
 
-    plt.savefig(directory_path + '/cosine_similarity_' + model_name + '_' + embedding_format + '_all.png')
+    plt.savefig(directory_path + '/cosine_similarity_' + model_name + '_' + embedding_format + '_all.png', bbox_extra_artists=(lgd,), bbox_inches = 'tight')
 
     plt.close()
 
@@ -197,8 +197,7 @@ embedding_formats_dict = {
 
 if __name__ == '__main__':
     # configure settings
-    input_files = ["egg1", "egg1_edge", "egg1_edge_long", "egg1_full", "egg2", "pancake1",
-                   "pancake1_zoomed", "pancake2"]
+    input_files = ["egg1_full", "egg2_full"]
     desired_embedding_formats_keys = ["1", "2", "3", "4", "5", "6", "7"]
     model_name = "dinov2_vitb14"
 

@@ -5,6 +5,7 @@ import torch
 import torch.nn as nn
 import torchvision
 import torchvision.transforms as T
+from tqdm import tqdm
 
 
 class NeuralNetwork(nn.Module):
@@ -50,7 +51,7 @@ embedding_format = "embeddings_only"
 
 # value format: (trained_model_name, file_name of video to predict, threshold)
 trained_model_metadata = {
-    "self_videos": ("embeddings_only_self_videos.zip", "egg1_full", 0.0135255147320975),
+    "self_videos": ("embeddings_only_self_videos.zip", "egg1_full", 0.0152814449891374),
     "youtube_videos": ('embeddings_only_youtube_videos.zip', "pizza3", 0.00999994077971596)
 }
 
@@ -91,7 +92,7 @@ if __name__ == "__main__":
     embeddings = pd.DataFrame()
     future_embeddings = pd.DataFrame()
 
-    for frame_num, frame in enumerate(video):
+    for frame_num, frame in enumerate(tqdm(video)):
         cropped_img = frame['data']
 
         # resize frame according to patches size and set dtype
@@ -143,7 +144,7 @@ if __name__ == "__main__":
 
                 if predicted_mean >= threshold:
                     # show frame:
-                    img = torchvision.transforms.ToPILImage()(transformed_frame)
+                    img = torchvision.transforms.ToPILImage()(frame['data'])
                     img.show()
                     print("Food is ready. Burned frame is: ", frame_num)
                     break
