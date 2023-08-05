@@ -1,5 +1,4 @@
 import math
-import statistics
 
 import pandas as pd
 import torch
@@ -88,8 +87,9 @@ if __name__ == "__main__":
     video_path = input_file_path
     video = torchvision.io.VideoReader(video_path, "video")
 
-    # the dataframe to collect embeddings
+    # the dataframes to collect embeddings
     embeddings = pd.DataFrame()
+    future_embeddings = pd.DataFrame()
 
     for frame_num, frame in enumerate(video):
         cropped_img = frame['data']
@@ -109,11 +109,11 @@ if __name__ == "__main__":
         embedding = embedding_model(ready_frame.cuda())  # inference
 
         # move to cpu
-        embedding = pd.DataFrame(embedding.cpu().detach().numpy())
+        embedding = pd.DataFrame(embedding.cpu().detach().numpy()).transpose()
         ready_frame.cpu()
 
         # concat embedding to embeddings dataFrame
-        embeddings = pd.concat([embeddings, embedding], axis=0)
+        embeddings = pd.concat([embeddings, embedding], axis=1)
         if frame_num >= gap_to_calc_embedding:
 
             # get embedding to do calc differentiation vector
@@ -122,21 +122,28 @@ if __name__ == "__main__":
 
             # calc differentiation embedding and concat to embedding
             subtract = lambda s1, s2: s1.subtract(s2)
-            differences_embedding = embedding.combine(embedding2, subtract)
-            merged_embedding = pd.concat([embedding, differences_embedding])
+            differences_embedding = embedding.combine(pd.DataFrame(embedding2), subtract)
+            merged_embedding = pd.concat([embedding, differences_embedding], axis=0)
+            X = torch.transpose((torch.tensor(merged_embedding.to_numpy())).to(torch.float32), 0, 1)
 
             # predict
-            future_embedding = trained_model(merged_embedding.cuda())
-            future_embedding.cpu()
+            future_embedding = trained_model(X.cuda())
 
-            # calc embeddings means
-            embeddings_for_threshold = embeddings.iloc[:, frame_num - num_frames_to_average_threshold:frame_num]
-            embeddings_means = embeddings_for_threshold.mean(axis=0)
-            predicted_mean = embeddings_means.mean()
+            # concat
+            future_embedding = pd.DataFrame(future_embedding.cpu().detach().numpy()).transpose()
+            future_embeddings = pd.concat([future_embeddings, future_embedding], axis=1)
 
-            if predicted_mean >= threshold:
-                # show frame:
-                img = torchvision.transforms.ToPILImage()(transformed_frame)
-                img.show()
-                print("Food is ready")
-                break
+            # calc future_embeddings means
+            future_embeddings_size = future_embeddings.shape[1]
+            if future_embeddings_size >= num_frames_to_average_threshold:
+
+                embeddings_for_threshold = future_embeddings.iloc[:, future_embeddings_size - num_frames_to_average_threshold:future_embeddings_size]
+                embeddings_means = embeddings_for_threshold.mean(axis=0)
+                predicted_mean = embeddings_means.mean()
+
+                if predicted_mean >= threshold:
+                    # show frame:
+                    img = torchvision.transforms.ToPILImage()(transformed_frame)
+                    img.show()
+                    print("Food is ready. Burned frame is: ", frame_num)
+                    break
