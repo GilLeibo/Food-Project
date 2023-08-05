@@ -35,7 +35,7 @@ def plot_scores(scores, directory_path, model_name, embedding_format, input_form
     plt.ylabel('Score')
 
     # giving a title to my graph
-    plt.title('Scores\n embedding_format: ' + embedding_format + ". Input format : " + input_format)
+    plt.title('Scores\n embedding_format: ' + embedding_format + ". input_format : " + input_format)
     lgd = plt.legend(bbox_to_anchor=(1.04, 0), loc="lower left")
 
     # function to show the plot
@@ -124,4 +124,4 @@ if __name__ == '__main__':
                 scores[file] = values
 
             plot_scores(scores, directory_path, model_name, embedding_format, input_format)
-            print("Generated scores graph for input format: ", input_format)
+            print("Generated scores graph for input format: " + input_format + " with embedding format: " + embedding_format)
