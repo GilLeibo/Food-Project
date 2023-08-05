@@ -96,7 +96,7 @@ num_frames_to_average_threshold = 50
 if __name__ == '__main__':
     # configure settings
     input_formats = ["self_videos", "youtube_videos"]
-    desired_embedding_formats_keys = ["2"]
+    desired_embedding_formats_keys = ["2", "4", "7"]
     model_name = "dinov2_vitb14"
 
     for input_format in input_formats:
