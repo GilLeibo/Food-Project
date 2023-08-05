@@ -15,21 +15,21 @@ that given time).
 """
 
 
-def plot_roc_curve(fpr, tpr, roc_curve_figure_path, input_format):
+def plot_roc_curve(fpr, tpr, roc_curve_figure_path, file_name):
     plt.plot(fpr, tpr)
     plt.plot([0, 1], [0, 1], '--')
     plt.xlabel('False Positive Rate')
     plt.ylabel('True Positive Rate')
-    plt.title('ROC Curve. Input format: ' + input_format)
+    plt.title('ROC Curve. Input format: ' + file_name)
     plt.savefig(roc_curve_figure_path)
     plt.close()
 
 
-def plot_scores_values(scores_list, scores_figure_path, input_format):
+def plot_scores_values(scores_list, scores_figure_path, file_name):
     plt.plot(np.arange(len(scores_list)), scores_list)
     plt.xlabel('Index')
     plt.ylabel('Score')
-    plt.title('Scores. Input format: ' + input_format)
+    plt.title('Scores. Input format: ' + file_name)
     plt.savefig(scores_figure_path)
     plt.close()
 
@@ -83,9 +83,9 @@ if __name__ == '__main__':
     file_name, time_burned = videos_time_burned_dict.get(input_format)
     result_excel_path = "/home/gilnetanel/Desktop/results/" + embedding_model + "_" + file_name + ".xlsx"
     input_file_path = "/home/gilnetanel/Desktop/input/" + file_name + ".mp4"
-    roc_curve_excel_path = "/home/gilnetanel/Desktop/ROC/" + embedding_model + "_" + input_format + "_roc_curve.xlsx"
-    roc_curve_figure_path = "/home/gilnetanel/Desktop/ROC/" + embedding_model + "_" + input_format + "_roc_curve.png"
-    scores_figure_path = "/home/gilnetanel/Desktop/ROC/" + embedding_model + "_" + input_format + "_scores.png"
+    roc_curve_excel_path = "/home/gilnetanel/Desktop/ROC/" + embedding_model + "_" + file_name + "_roc_curve.xlsx"
+    roc_curve_figure_path = "/home/gilnetanel/Desktop/ROC/" + embedding_model + "_" + file_name + "_roc_curve.png"
+    scores_figure_path = "/home/gilnetanel/Desktop/ROC/" + embedding_model + "_" + file_name + "_scores.png"
     embedding_format = embedding_formats_dict.get(embedding_format_key)
 
     # load video to get fps and get the index of first burned_frame
@@ -128,9 +128,9 @@ if __name__ == '__main__':
     print("Saved roc_curve values to Excel")
 
     # plot roc curve
-    plot_roc_curve(fpr, tpr, roc_curve_figure_path, input_format)
+    plot_roc_curve(fpr, tpr, roc_curve_figure_path, file_name)
     print("Saved roc_curve Figure")
 
     # plot scores
-    plot_scores_values(scores_list, scores_figure_path, input_format)
+    plot_scores_values(scores_list, scores_figure_path, file_name)
     print("Saved scores Figure")

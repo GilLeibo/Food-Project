@@ -51,7 +51,7 @@ embedding_format = "embeddings_only"
 
 # value format: (trained_model_name, file_name of video to predict, threshold)
 trained_model_metadata = {
-    "self_videos": ("embeddings_only_self_videos.zip", "egg1_full", 0.0152814449891374),
+    "self_videos": ("embeddings_only_self_videos.zip", "egg1_full", 0.015145331479015),
     "youtube_videos": ('embeddings_only_youtube_videos.zip', "pizza3", 0.00999994077971596)
 }
 
@@ -118,7 +118,7 @@ if __name__ == "__main__":
         if frame_num >= gap_to_calc_embedding:
 
             # get embedding to do calc differentiation vector
-            differentiation_embedding_frame = frame_num-gap_to_calc_embedding
+            differentiation_embedding_frame = frame_num - gap_to_calc_embedding
             embedding2 = embeddings.iloc[:, differentiation_embedding_frame]
 
             # calc differentiation embedding and concat to embedding
@@ -138,7 +138,8 @@ if __name__ == "__main__":
             future_embeddings_size = future_embeddings.shape[1]
             if future_embeddings_size >= num_frames_to_average_threshold:
 
-                embeddings_for_threshold = future_embeddings.iloc[:, future_embeddings_size - num_frames_to_average_threshold:future_embeddings_size]
+                embeddings_for_threshold = future_embeddings.iloc[:,
+                                           future_embeddings_size - num_frames_to_average_threshold:future_embeddings_size]
                 embeddings_means = embeddings_for_threshold.mean(axis=0)
                 predicted_mean = embeddings_means.mean()
 
@@ -146,5 +147,7 @@ if __name__ == "__main__":
                     # show frame:
                     img = torchvision.transforms.ToPILImage()(frame['data'])
                     img.show()
+                    image_save_path = "/home/gilnetanel/Desktop/predict/" + input_file + "_" + str(frame_num) + ".png"
+                    img.save(image_save_path)
                     print("Food is ready. Burned frame is: ", frame_num)
                     break
