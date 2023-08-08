@@ -8,14 +8,6 @@ import subprocess
 import torch
 from sklearn.metrics.pairwise import cosine_similarity
 
-"""
-* In this code you need to specify a video file_name and the time when the food in the video is starting to be 
-considered burned and the code produce the threshold one can use with cosine_similarity to decide when other food videos
-are starting to be burned (smaller than the threshold).
-* You can also set the number of seconds you want the threshold will be calculated on (number of frames is inferred from
-that given time).
-"""
-
 
 def get_reference_embedding(input_format, embedding_model, embedding_format, roc_curve_input_format_path):
 
