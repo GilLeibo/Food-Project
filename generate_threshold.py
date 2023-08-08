@@ -68,8 +68,11 @@ embedding_formats_dict = {
 
 # value is time (in seconds) to first burned frame
 videos_time_burned_dict = {
-    "self_videos": ("egg2_full", 160),
-    "youtube_videos": ("bagle", 50)
+    "self_videos": {"egg2_full": 160},
+    "youtube_videos": {"bagle": 50, "brocolli": 50, "burek": 50, "casserole": 20, "cheese_sandwich": 50, "cheesy_sticks": 55, "cherry_pie": 50,
+                       "cinabbon": 40, "cinnamon": 55, "croissant": 60, "egg": 38, "nachos": 55, "pastry": 50, "pizza1": 55, "pizza2": 50},
+    "all_videos": {"egg2_full": 160, "bagle": 50, "brocolli": 50, "burek": 50, "casserole": 20, "cheese_sandwich": 50, "cheesy_sticks": 55, "cherry_pie": 50,
+                       "cinabbon": 40, "cinnamon": 55, "croissant": 60, "egg": 38, "nachos": 55, "pastry": 50, "pizza1": 55, "pizza2": 50}
 }
 
 if __name__ == '__main__':
