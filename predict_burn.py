@@ -52,13 +52,14 @@ embedding_format = "embeddings_only"
 # value format: (trained_model_name, file_name of video to predict, threshold)
 trained_model_metadata = {
     "self_videos": ("embeddings_only_self_videos.zip", "egg1_full", 0.0149259155525956),
-    "youtube_videos": ('embeddings_only_youtube_videos.zip', "pizza3", 0.00999994077971596)
+    "youtube_videos": ('embeddings_only_youtube_videos.zip', "pizza3", 0.00999994077971596),
+    "all_videos": ('embeddings_only_all_videos.zip', "egg1_full", )
 }
 
 if __name__ == "__main__":
 
     # configure settings
-    trained_model_data = "self_videos"
+    trained_model_data = "all_videos"
     gap_to_calc_embedding = 90
     num_frames_to_average_threshold = 50
 
