@@ -36,6 +36,14 @@ def get_reference_embedding(input_format, embedding_model, embedding_format, roc
 
     # calc final_reference_embedding
     final_reference_embedding = final_reference_embedding.mean(axis=1)
+
+    # save extended_reference_embedding to Excel
+    final_reference_embedding_excel_path = roc_curve_input_format_path + "/" + embedding_model + "_" + input_format + "_extended_reference_embedding.xlsx"
+    cmd = 'rm ' + final_reference_embedding_excel_path
+    subprocess.run(cmd, shell=True)
+    final_reference_embedding.to_excel(final_reference_embedding_excel_path, index=None, header=False)
+    print("Saved {} extended_reference_embedding values to Excel".format(input_format))
+
     final_reference_embedding = (torch.tensor(final_reference_embedding)).to(torch.float32)
     final_reference_embedding = torch.unsqueeze(final_reference_embedding, 0)
     return final_reference_embedding
