@@ -132,6 +132,7 @@ if __name__ == '__main__':
     embedding_model = "dinov2_vitb14"
     embedding_format_key = "2"
     reference_embedding_formats = ["separate", "extended"]     # separate - separate reference embedding for each file, extended - reference embedding is the same for all files and consists of mean of all files
+    input_formats = ["all_videos", "youtube_videos", "self_videos"]
     num_frames_to_average_threshold = 50
 
     # scores
@@ -143,7 +144,7 @@ if __name__ == '__main__':
     # get embedding_format
     embedding_format = embedding_formats_dict.get(embedding_format_key)
 
-    for input_format in ["all_videos", "youtube_videos", "self_videos"]:
+    for input_format in input_formats:
 
         # remove corresponding ROC folder if exists
         roc_curve_input_format_path = "/home/gilnetanel/Desktop/ROC/" + input_format
