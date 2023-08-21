@@ -7,10 +7,24 @@ import matplotlib.pyplot as plt
 import subprocess
 import torch
 from sklearn.metrics.pairwise import cosine_similarity
+import random
 
 
-def get_reference_embedding(input_format, embedding_model, embedding_format, roc_curve_input_format_path):
+def get_random_embedding_values(embedding_size, number_values):
+    random_list = []
+    i = 0
+    max_count = number_values
+    if embedding_size < number_values:
+        max_count = embedding_size
+    while i < max_count:
+        r = random.randint(0, embedding_size-1)
+        if r not in random_list:
+            random_list.append(r)
+            i += 1
+    return random_list
 
+
+def get_reference_embedding(input_format, embedding_model, embedding_format, roc_curve_input_format_path, embedding_values_indexes):
     # reference embedding to return
     final_reference_embedding = pd.DataFrame()
 
@@ -29,20 +43,26 @@ def get_reference_embedding(input_format, embedding_model, embedding_format, roc
         df = pd.read_excel(result_excel_path, header=None)
         embeddings = get_values_according2_embedding_format(df, embedding_format)
 
+        # re arrange col indexes
+        embeddings = embeddings.transpose()
+        new_col = np.arange(embeddings.shape[1]).tolist()
+        embeddings.columns = new_col
+        embeddings = embeddings.transpose()
+
         # set reference embedding
-        reference_embedding = embeddings.iloc[:, time_burned_frame_index - num_frames_to_average_threshold:time_burned_frame_index]
+        reference_embedding = embeddings.iloc[embedding_values_indexes,
+                              time_burned_frame_index - num_frames_to_average_threshold:time_burned_frame_index]
         reference_embedding = reference_embedding.mean(axis=1)
         final_reference_embedding = pd.concat([final_reference_embedding, reference_embedding], axis=1)
 
     # calc final_reference_embedding
     final_reference_embedding = final_reference_embedding.mean(axis=1)
+    final_reference_embedding = (final_reference_embedding.reset_index()).iloc[:, 1]
 
     # save extended_reference_embedding to Excel
-    final_reference_embedding_excel_path = roc_curve_input_format_path + "/" + embedding_model + "_" + input_format + "_extended_reference_embedding.xlsx"
-    cmd = 'rm ' + final_reference_embedding_excel_path
-    subprocess.run(cmd, shell=True)
+    final_reference_embedding_excel_path = roc_curve_input_format_path + "/" + input_format + "_" + embedding_format + "_extended_reference_embedding.xlsx"
     final_reference_embedding.to_excel(final_reference_embedding_excel_path, index=None, header=False)
-    print("Saved {} extended_reference_embedding values to Excel".format(input_format))
+    print("Saved {} {} extended_reference_embedding to Excel".format(input_format, embedding_format))
 
     final_reference_embedding = (torch.tensor(final_reference_embedding)).to(torch.float32)
     final_reference_embedding = torch.unsqueeze(final_reference_embedding, 0)
@@ -63,21 +83,22 @@ def calc_score(metric, vector1, vector2):
             return (cosine_similarity(vector1, vector2)).item()
 
 
-def plot_roc_curve(roc_curve_figure_path, input_format, reference_embedding_format):
+def plot_roc_curve(roc_curve_figure_path, input_format, reference_embedding_format, embedding_format):
     plt.plot([0, 1], [0, 1], '--')
     plt.xlabel('False Positive Rate')
     plt.ylabel('True Positive Rate')
-    plt.title('ROC Curve\n Input format: {}, Reference embedding format: {}'.format(input_format, reference_embedding_format))
+    plt.title('ROC Curve\n Input: {}, Embedding_format: {}'.format(input_format, embedding_format))
     lgd = plt.legend(bbox_to_anchor=(1.04, 0), loc="lower left")
     plt.savefig(roc_curve_figure_path, bbox_extra_artists=(lgd,), bbox_inches='tight')
     plt.close()
 
 
-def plot_scores_values(metric, scores, scores_figure_path, input_format, reference_embedding_format):
+def plot_scores_values(metric, scores, scores_figure_path, input_format, reference_embedding_format, embedding_format):
     plt.plot(np.arange(len(scores)), scores)
     plt.xlabel('Index')
     plt.ylabel('Score')
-    plt.title('Scores {}\n Input format: {}, Reference embedding format: {}'.format(metric, input_format, reference_embedding_format))
+    plt.title(
+        'Scores {}\n Input: {}, Embedding_format: {}'.format(metric, input_format, embedding_format))
     plt.savefig(scores_figure_path)
     plt.close()
 
@@ -124,16 +145,20 @@ videos_time_burned_dict = {
     "all_videos": {"egg2_full": 160, "bagle": 50, "brocolli": 50, "burek": 50, "casserole": 20, "cheese_sandwich": 50,
                    "cheesy_sticks": 55, "cherry_pie": 50,
                    "cinabbon": 40, "cinnamon": 55, "croissant": 60, "egg": 38, "nachos": 55, "pastry": 50, "pizza1": 55,
-                   "pizza2": 50}
+                   "pizza2": 50},
+    "example": {"bagle": 50}
 }
 
 if __name__ == '__main__':
     # set input file
     embedding_model = "dinov2_vitb14"
-    embedding_format_key = "2"
-    reference_embedding_formats = ["separate", "extended"]     # separate - separate reference embedding for each file, extended - reference embedding is the same for all files and consists of mean of all files
-    input_formats = ["all_videos", "youtube_videos", "self_videos"]
+    embedding_format_keys = ["2", "4"]
+    reference_embedding_formats = [
+        "extended"]  # separate - separate reference embedding for each file, extended - reference embedding is the same for all files and consists of mean of all files
+    input_formats = ["example"]
     num_frames_to_average_threshold = 50
+    num_random_values_from_embedding = 50
+    default_base_embedding_size = 768
 
     # scores
     L1_scores = []
@@ -141,88 +166,116 @@ if __name__ == '__main__':
     cosine_scores = []
     true_values = np.array([])
 
-    # get embedding_format
-    embedding_format = embedding_formats_dict.get(embedding_format_key)
+    # get random indexes to get from embedding
+    random_indexes_list = get_random_embedding_values(default_base_embedding_size, num_random_values_from_embedding)
 
     for input_format in input_formats:
 
         # remove corresponding ROC folder if exists
-        roc_curve_input_format_path = "/home/gilnetanel/Desktop/ROC/" + input_format
-        cmd1 = 'rm -r ' + roc_curve_input_format_path
-        cmd2 = 'mkdir -p ' + roc_curve_input_format_path
+        cmd1 = 'rm -r /home/gilnetanel/Desktop/ROC/' + input_format
+        cmd2 = 'mkdir -p /home/gilnetanel/Desktop/ROC/' + input_format
         subprocess.run(cmd1, shell=True)
         subprocess.run(cmd2, shell=True)
 
-        for reference_embedding_format in reference_embedding_formats:
+        for embedding_format_key in embedding_format_keys:
 
-            if reference_embedding_format == "extended":
-                reference_embedding = get_reference_embedding(input_format, embedding_model, embedding_format, roc_curve_input_format_path)
+            # get embedding_format
+            embedding_format = embedding_formats_dict.get(embedding_format_key)
 
-            for file_name, time_burned in (videos_time_burned_dict.get(input_format)).items():
+            embedding_values_indexes = random_indexes_list
+            if embedding_format == "embedding_hsv":
+                embedding_values_indexes.append(768)
+                embedding_values_indexes.append(769)
+                embedding_values_indexes.append(770)
 
-                # init values
-                result_excel_path = "/home/gilnetanel/Desktop/results/" + embedding_model + "_" + file_name + ".xlsx"
-                input_file_path = "/home/gilnetanel/Desktop/input/" + file_name + ".mp4"
+            roc_curve_input_format_path = '/home/gilnetanel/Desktop/ROC/' + input_format + '/' + embedding_format
+            cmd1 = 'mkdir -p ' + roc_curve_input_format_path
+            subprocess.run(cmd1, shell=True)
 
-                # load video to get fps and get the index of first burned_frame
-                torchvision.set_video_backend("pyav")
-                video = torchvision.io.VideoReader(input_file_path, "video")
-                video_fps = (video.get_metadata().get('video')).get('fps')[0]
-                time_burned_frame_index = int(time_burned * video_fps)
+            for reference_embedding_format in reference_embedding_formats:
 
-                # Read the Excel file into a pandas DataFrame
-                df = pd.read_excel(result_excel_path, header=None)
-                embeddings = get_values_according2_embedding_format(df, embedding_format)
+                if reference_embedding_format == "extended":
+                    reference_embedding = get_reference_embedding(input_format, embedding_model, embedding_format,
+                                                                  roc_curve_input_format_path, embedding_values_indexes)
 
-                if reference_embedding_format == "separate":
-                    reference_embedding = embeddings.iloc[:, time_burned_frame_index - num_frames_to_average_threshold:time_burned_frame_index]
-                    reference_embedding = reference_embedding.mean(axis=1)
-                    reference_embedding = (torch.tensor(reference_embedding)).to(torch.float32)
-                    reference_embedding = torch.unsqueeze(reference_embedding, 0)
+                for file_name, time_burned in (videos_time_burned_dict.get(input_format)).items():
 
-                # calc the scores
-                for frame_num in np.arange(embeddings.shape[1]):
-                    if frame_num >= num_frames_to_average_threshold:
-                        embeddings_to_calc = embeddings.iloc[:, frame_num - num_frames_to_average_threshold:frame_num]
-                        embedding_to_calc = embeddings_to_calc.mean(axis=1)
-                        embedding_to_calc_tensor = (torch.tensor(embedding_to_calc)).to(torch.float32)
-                        embedding_to_calc_tensor = torch.unsqueeze(embedding_to_calc_tensor, 0)
-                        for metric, scores in zip(["L1_norm", "L2_norm", "cosine_similarity"],
-                                                  [L1_scores, L2_scores, cosine_scores]):
-                            score = calc_score(metric, reference_embedding, embedding_to_calc_tensor)
-                            scores.append(score)
+                    # init values
+                    result_excel_path = "/home/gilnetanel/Desktop/results/" + embedding_model + "_" + file_name + ".xlsx"
+                    input_file_path = "/home/gilnetanel/Desktop/input/" + file_name + ".mp4"
 
-                # calc true_values
-                true_values = np.append(true_values, numpy.zeros(time_burned_frame_index - num_frames_to_average_threshold))
-                true_values = np.append(true_values, numpy.ones(embeddings.shape[1] - time_burned_frame_index))
+                    # load video to get fps and get the index of first burned_frame
+                    torchvision.set_video_backend("pyav")
+                    video = torchvision.io.VideoReader(input_file_path, "video")
+                    video_fps = (video.get_metadata().get('video')).get('fps')[0]
+                    time_burned_frame_index = int(time_burned * video_fps)
 
-            for metric, scores in zip(["L1_norm", "L2_norm", "cosine_similarity"], [L1_scores, L2_scores, cosine_scores]):
-                # calc roc_curve values
-                fpr, tpr, thresholds = metrics.roc_curve(true_values, np.array(scores))
+                    # Read the Excel file into a pandas DataFrame
+                    df = pd.read_excel(result_excel_path, header=None)
+                    embeddings = get_values_according2_embedding_format(df, embedding_format)
 
-                # save values to Excel file
-                roc_curve_excel_path = (roc_curve_input_format_path + "/" + embedding_model + "_" + input_format + "_"
-                                        + reference_embedding_format + "_" + metric + "_roc_curve.xlsx")
-                cmd = 'rm ' + roc_curve_excel_path
-                subprocess.run(cmd, shell=True)
-                dataFrames_to_save = pd.DataFrame()
-                for value in [fpr, tpr, thresholds]:
-                    value_df = pd.DataFrame(value)
-                    dataFrames_to_save = pd.concat([dataFrames_to_save, value_df], axis=1)
-                dataFrames_to_save.to_excel(roc_curve_excel_path, index=None, header=["fpr", "tpr", "thresholds"])
-                print("Saved {} roc_curve values to Excel".format(metric))
+                    # re arrange col indexes
+                    embeddings = embeddings.transpose()
+                    new_col = np.arange(embeddings.shape[1]).tolist()
+                    embeddings.columns = new_col
+                    embeddings = embeddings.transpose()
 
-                # plot to roc curve graph
-                plt.plot(fpr, tpr, label=metric)
+                    if reference_embedding_format == "separate":
+                        reference_embedding = embeddings.iloc[:,
+                                              time_burned_frame_index - num_frames_to_average_threshold:time_burned_frame_index]
+                        reference_embedding = reference_embedding.mean(axis=1)
+                        reference_embedding = (torch.tensor(reference_embedding)).to(torch.float32)
+                        reference_embedding = torch.unsqueeze(reference_embedding, 0)
 
-            # plot roc curve
-            roc_curve_figure_path = roc_curve_input_format_path + "/" + embedding_model + "_" + input_format + "_" + reference_embedding_format + "_roc_curve.png"
-            plot_roc_curve(roc_curve_figure_path, input_format, reference_embedding_format)
-            print("Saved roc_curve Figure")
+                    # calc the scores
+                    for frame_num in np.arange(embeddings.shape[1]):
+                        if frame_num >= num_frames_to_average_threshold:
+                            embeddings_to_calc = embeddings.iloc[embedding_values_indexes,
+                                                 frame_num - num_frames_to_average_threshold:frame_num]
+                            embedding_to_calc = embeddings_to_calc.mean(axis=1)
+                            embedding_to_calc = (embedding_to_calc.reset_index()).iloc[:, 1]
+                            embedding_to_calc_tensor = (torch.tensor(embedding_to_calc)).to(torch.float32)
+                            embedding_to_calc_tensor = torch.unsqueeze(embedding_to_calc_tensor, 0)
+                            for metric, scores in zip(["L1_norm", "L2_norm", "cosine_similarity"],
+                                                      [L1_scores, L2_scores, cosine_scores]):
+                                score = calc_score(metric, reference_embedding, embedding_to_calc_tensor)
+                                scores.append(score)
 
-            # plot scores
-            for metric, scores in zip(["L1_norm", "L2_norm", "cosine_similarity"], [L1_scores, L2_scores, cosine_scores]):
-                scores_figure_path = (roc_curve_input_format_path + "/" + embedding_model + "_" + input_format + "_"
-                                      + reference_embedding_format + "_" + metric + "_scores.png")
-                plot_scores_values(metric, scores, scores_figure_path, input_format, reference_embedding_format)
-                print("Saved {} scores Figure".format(metric))
+                    # calc true_values
+                    true_values = np.append(true_values,
+                                            numpy.zeros(time_burned_frame_index - num_frames_to_average_threshold))
+                    true_values = np.append(true_values, numpy.ones(embeddings.shape[1] - time_burned_frame_index))
+
+                for metric, scores in zip(["L1_norm", "L2_norm", "cosine_similarity"],
+                                          [L1_scores, L2_scores, cosine_scores]):
+                    # calc roc_curve values
+                    fpr, tpr, thresholds = metrics.roc_curve(true_values, np.array(scores))
+
+                    # save values to Excel file
+                    roc_curve_excel_path = (
+                                roc_curve_input_format_path + "/" + input_format + "_" + embedding_format + "_"
+                                + reference_embedding_format + "_" + metric + "_roc_curve.xlsx")
+                    dataFrames_to_save = pd.DataFrame()
+                    for value in [fpr, tpr, thresholds]:
+                        value_df = pd.DataFrame(value)
+                        dataFrames_to_save = pd.concat([dataFrames_to_save, value_df], axis=1)
+                    dataFrames_to_save.to_excel(roc_curve_excel_path, index=None, header=["fpr", "tpr", "thresholds"])
+                    print("Saved {} {} {} ROC to Excel".format(input_format, embedding_format, metric))
+
+                    # plot to roc curve graph
+                    plt.plot(fpr, tpr, label=metric)
+
+                # plot roc curve
+                roc_curve_figure_path = roc_curve_input_format_path + "/" + input_format + "_" + embedding_format + "_" + reference_embedding_format + "_roc_curve.png"
+                plot_roc_curve(roc_curve_figure_path, input_format, reference_embedding_format, embedding_format)
+                print("Saved {} {} {} ROC Figure".format(input_format, embedding_format, reference_embedding_format))
+
+                # plot scores
+                for metric, scores in zip(["L1_norm", "L2_norm", "cosine_similarity"],
+                                          [L1_scores, L2_scores, cosine_scores]):
+                    scores_figure_path = (
+                                roc_curve_input_format_path + "/" + input_format + "_" + embedding_format + "_"
+                                + reference_embedding_format + "_" + metric + "_scores.png")
+                    plot_scores_values(metric, scores, scores_figure_path, input_format, reference_embedding_format,
+                                       embedding_format)
+                    print("Saved {} {} {} scores Figure".format(input_format, embedding_format, metric))
