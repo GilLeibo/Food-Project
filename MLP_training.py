@@ -41,7 +41,7 @@ class EmbeddingsDataset(Dataset):
         return torch.index_select(self.X, 0, indices), torch.index_select(self.Y, 0, indices)
 
 
-def get_train_test_sets(input_files, gap_to_prediction_frame, gap_to_calc_embedding, test_set_size, embedding_format):
+def get_train_test_sets(input_files, gap_to_prediction_frame, gap_to_calc_embedding, test_set_size, embedding_format, embeddings_indexes):
     # init dataFrames for datasets
     X = pd.DataFrame()
     Y = pd.DataFrame()
@@ -52,12 +52,11 @@ def get_train_test_sets(input_files, gap_to_prediction_frame, gap_to_calc_embedd
         df = pd.read_excel(result_excel_path, header=None)
         data_set = get_values_according2_embedding_format(df, embedding_format)
 
-        # check embedding_size is correct
-        assert embedding_size == data_set.shape[0]
-
         # generate the dataset for input file
-        X_embedding1 = data_set.iloc[:, gap_to_calc_embedding:-gap_to_prediction_frame]
-        X_embedding2 = data_set.iloc[:, :-(gap_to_prediction_frame + gap_to_calc_embedding)]
+        X_embedding1 = data_set.loc[embeddings_indexes]
+        X_embedding1 = X_embedding1.iloc[:, gap_to_calc_embedding:-gap_to_prediction_frame]
+        X_embedding2 = data_set.loc[embeddings_indexes]
+        X_embedding2 = X_embedding2.iloc[:, :-(gap_to_prediction_frame + gap_to_calc_embedding)]
 
         new_col = np.arange(X_embedding1.shape[1]).tolist()
         X_embedding1.columns = new_col
@@ -65,7 +64,8 @@ def get_train_test_sets(input_files, gap_to_prediction_frame, gap_to_calc_embedd
         subtract = lambda s1, s2: s1.subtract(s2)
         X_embedding_differences = X_embedding1.combine(X_embedding2, subtract)
         X_input_file = pd.concat([X_embedding1, X_embedding_differences])
-        Y_input_file = data_set.iloc[:, gap_to_calc_embedding + gap_to_prediction_frame:]
+        Y_input_file = data_set.loc[embeddings_indexes]
+        Y_input_file = Y_input_file.iloc[:, gap_to_calc_embedding + gap_to_prediction_frame:]
 
         # add dataset of input file to the overall dataset
         X = pd.concat([X, X_input_file], axis=1)
@@ -102,6 +102,19 @@ def plot_learning_rates(input_format, embedding_format, n_epochs):
     plt.close()
 
 
+def get_embeddings_indexes(random_values, embedding_format):
+    match embedding_format:
+        case "embeddings_only":
+            return random_values
+        case "embedding_hsv":
+            new_indexes = random_values
+            for hsv_index in hsv_indexes:
+                new_indexes.append(hsv_index)
+            return new_indexes
+        case "hsv":
+            return hsv_indexes
+
+
 def get_values_according2_embedding_format(df, embedding_format):
     embeddings_features = df.iloc[:-6, :]
     rgb_features = df.iloc[-6:-3, :]
@@ -124,14 +137,16 @@ def get_values_according2_embedding_format(df, embedding_format):
             return hsv_features
 
 
+hsv_indexes = [771, 772, 773]
+
 embedding_formats_dict = {
-    "1": ("full_embeddings", 774),
-    "2": ("embeddings_only", 768),
-    "3": ("embedding_rgb", 771),
-    "4": ("embedding_hsv", 771),
-    "5": ("rgb_hsv", 6),
-    "6": ("rgb", 3),
-    "7": ("hsv", 3)
+    "1": "full_embeddings",
+    "2": "embeddings_only",
+    "3": "embedding_rgb",
+    "4": "embedding_hsv",
+    "5": "rgb_hsv",
+    "6": "rgb",
+    "7": "hsv"
 }
 
 input_files_dict = {
@@ -161,13 +176,18 @@ if __name__ == "__main__":
 
     # configure settings
     embedding_format_keys = ["2", "4"]
-    input_formats = ["example"]
+    input_formats = ["self_videos", "youtube_videos", "all_videos", "youtube_videos_left_parts", "pizzas", "pizzas_left_parts"]
     learning_rates = [0.01, 0.02, 0.04, 0.06, 0.08, 0.1]
     n_epochs_list = [500, 600, 700]
     test_set_size = 0.25  # portion of test_set size from dataset
     batch_size = 100  # size of each batch
     gap_to_prediction_frame = 450  # gap (in frames) to prediction frame
     gap_to_calc_embedding = 90  # gap (in frames) to the embedding which will be used to calc differentiation from current embedding
+
+    # read from Excel the random values to use as indexes for the embeddings
+    random_values_excel_path = '/home/gilnetanel/Desktop/random_values/random_values.xlsx'
+    random_values = pd.read_excel(random_values_excel_path, header=0, names=["training"], index_col=None, usecols=[0])
+    random_values = random_values["training"].tolist()
 
     # iterate all input_formats
     for input_format in input_formats:
@@ -182,13 +202,17 @@ if __name__ == "__main__":
 
         # iterate all embedding_format_keys
         for embedding_format_key in embedding_format_keys:
-            embedding_format, embedding_size = embedding_formats_dict.get(embedding_format_key)
+            embedding_format = embedding_formats_dict.get(embedding_format_key)
 
             cmd1 = 'mkdir -p /home/gilnetanel/Desktop/trained_models/' + input_format + '/' + embedding_format
             subprocess.run(cmd1, shell=True)
 
+            # get_embeddings_indexes
+            embeddings_indexes = get_embeddings_indexes(random_values, embedding_format)
+            embedding_size = len(embeddings_indexes)
+
             Xtrain, Xtest, Ytrain, Ytest = get_train_test_sets(input_files, gap_to_prediction_frame,
-                                                               gap_to_calc_embedding, test_set_size, embedding_format)
+                                                               gap_to_calc_embedding, test_set_size, embedding_format, embeddings_indexes)
 
             # set datasets and dataloaders
             train_dataset = EmbeddingsDataset(Xtrain, Ytrain)

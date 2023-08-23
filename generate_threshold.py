@@ -10,21 +10,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 import random
 
 
-def get_random_embedding_values(embedding_size, number_values):
-    random_list = []
-    i = 0
-    max_count = number_values
-    if embedding_size < number_values:
-        max_count = embedding_size
-    while i < max_count:
-        r = random.randint(0, embedding_size-1)
-        if r not in random_list:
-            random_list.append(r)
-            i += 1
-    return random_list
-
-
-def get_reference_embedding(input_format, embedding_model, embedding_format, roc_curve_input_format_path, embedding_values_indexes):
+def get_reference_embedding(input_format, embedding_model, embedding_format, roc_curve_input_format_path, embeddings_indexes):
     # reference embedding to return
     final_reference_embedding = pd.DataFrame()
 
@@ -43,15 +29,9 @@ def get_reference_embedding(input_format, embedding_model, embedding_format, roc
         df = pd.read_excel(result_excel_path, header=None)
         embeddings = get_values_according2_embedding_format(df, embedding_format)
 
-        # re arrange col indexes
-        embeddings = embeddings.transpose()
-        new_col = np.arange(embeddings.shape[1]).tolist()
-        embeddings.columns = new_col
-        embeddings = embeddings.transpose()
-
         # set reference embedding
-        reference_embedding = embeddings.iloc[embedding_values_indexes,
-                              time_burned_frame_index - num_frames_to_average_threshold:time_burned_frame_index]
+        reference_embedding = embeddings.loc[embeddings_indexes]
+        reference_embedding = reference_embedding.iloc[:, time_burned_frame_index - num_frames_to_average_threshold:time_burned_frame_index]
         reference_embedding = reference_embedding.mean(axis=1)
         final_reference_embedding = pd.concat([final_reference_embedding, reference_embedding], axis=1)
 
@@ -103,6 +83,19 @@ def plot_scores_values(metric, scores, scores_figure_path, input_format, referen
     plt.close()
 
 
+def get_embeddings_indexes(random_values, embedding_format):
+    match embedding_format:
+        case "embeddings_only":
+            return random_values
+        case "embedding_hsv":
+            new_indexes = random_values
+            for hsv_index in hsv_indexes:
+                new_indexes.append(hsv_index)
+            return new_indexes
+        case "hsv":
+            return hsv_indexes
+
+
 def get_values_according2_embedding_format(df, embedding_format):
     embeddings_features = df.iloc[:-6, :]
     rgb_features = df.iloc[-6:-3, :]
@@ -125,6 +118,8 @@ def get_values_according2_embedding_format(df, embedding_format):
             return hsv_features
 
 
+hsv_indexes = [771, 772, 773]
+
 embedding_formats_dict = {
     "1": "full_embeddings",
     "2": "embeddings_only",
@@ -146,7 +141,13 @@ videos_time_burned_dict = {
                    "cheesy_sticks": 55, "cherry_pie": 50,
                    "cinabbon": 40, "cinnamon": 55, "croissant": 60, "egg": 38, "nachos": 55, "pastry": 50, "pizza1": 55,
                    "pizza2": 50},
-    "example": {"bagle": 50}
+    "youtube_videos_left_parts": {"bagle_left_part": 50, "brocolli_left_part": 50, "burek_left_part": 50, "casserole_left_part": 20,
+                                  "cheese_sandwich_left_part": 50, "cheesy_sticks_left_part": 55, "cherry_pie_left_part": 50,
+                                  "cinabbon_left_part": 40, "cinnamon_left_part": 55, "croissant_left_part": 60, "egg_left_part": 38,
+                                  "nachos_left_part": 55, "pastry_left_part": 50, "pizza1_left_part": 55, "pizza2_left_part": 50},
+    "pizzas": {"pizza1": 55, "pizza2": 50, "pizza3": 50},
+    "pizzas_left_parts": {"pizza1_left_part": 55, "pizza2_left_part": 50, "pizza3_left_part": 50},
+
 }
 
 if __name__ == '__main__':
@@ -155,10 +156,8 @@ if __name__ == '__main__':
     embedding_format_keys = ["2", "4"]
     reference_embedding_formats = [
         "extended"]  # separate - separate reference embedding for each file, extended - reference embedding is the same for all files and consists of mean of all files
-    input_formats = ["example"]
+    input_formats = ["self_videos", "youtube_videos", "all_videos", "youtube_videos_left_parts", "pizzas", "pizzas_left_parts"]
     num_frames_to_average_threshold = 50
-    num_random_values_from_embedding = 50
-    default_base_embedding_size = 768
 
     # scores
     L1_scores = []
@@ -166,9 +165,12 @@ if __name__ == '__main__':
     cosine_scores = []
     true_values = np.array([])
 
-    # get random indexes to get from embedding
-    random_indexes_list = get_random_embedding_values(default_base_embedding_size, num_random_values_from_embedding)
+    # read from Excel the random values to use as indexes for the embeddings
+    random_values_excel_path = '/home/gilnetanel/Desktop/random_values/random_values.xlsx'
+    random_values = pd.read_excel(random_values_excel_path, header=0, names=["threshold"], index_col=None, usecols=[1])
+    random_values = random_values["threshold"].tolist()
 
+    # iterate all input_formats
     for input_format in input_formats:
 
         # remove corresponding ROC folder if exists
@@ -177,26 +179,26 @@ if __name__ == '__main__':
         subprocess.run(cmd1, shell=True)
         subprocess.run(cmd2, shell=True)
 
+        # iterate all embedding_format_keys
         for embedding_format_key in embedding_format_keys:
 
             # get embedding_format
             embedding_format = embedding_formats_dict.get(embedding_format_key)
 
-            embedding_values_indexes = random_indexes_list
-            if embedding_format == "embedding_hsv":
-                embedding_values_indexes.append(768)
-                embedding_values_indexes.append(769)
-                embedding_values_indexes.append(770)
+            # get_embeddings_indexes
+            embeddings_indexes = get_embeddings_indexes(random_values, embedding_format)
 
+            # create new folder corresponding to input_format and embedding_format
             roc_curve_input_format_path = '/home/gilnetanel/Desktop/ROC/' + input_format + '/' + embedding_format
             cmd1 = 'mkdir -p ' + roc_curve_input_format_path
             subprocess.run(cmd1, shell=True)
 
+            # iterate all reference_embedding_formats
             for reference_embedding_format in reference_embedding_formats:
 
                 if reference_embedding_format == "extended":
                     reference_embedding = get_reference_embedding(input_format, embedding_model, embedding_format,
-                                                                  roc_curve_input_format_path, embedding_values_indexes)
+                                                                  roc_curve_input_format_path, embeddings_indexes)
 
                 for file_name, time_burned in (videos_time_burned_dict.get(input_format)).items():
 
@@ -213,25 +215,20 @@ if __name__ == '__main__':
                     # Read the Excel file into a pandas DataFrame
                     df = pd.read_excel(result_excel_path, header=None)
                     embeddings = get_values_according2_embedding_format(df, embedding_format)
-
-                    # re arrange col indexes
-                    embeddings = embeddings.transpose()
-                    new_col = np.arange(embeddings.shape[1]).tolist()
-                    embeddings.columns = new_col
-                    embeddings = embeddings.transpose()
+                    embeddings = embeddings.loc[embeddings_indexes]
 
                     if reference_embedding_format == "separate":
                         reference_embedding = embeddings.iloc[:,
                                               time_burned_frame_index - num_frames_to_average_threshold:time_burned_frame_index]
                         reference_embedding = reference_embedding.mean(axis=1)
+                        reference_embedding = (reference_embedding.reset_index()).iloc[:, 1]
                         reference_embedding = (torch.tensor(reference_embedding)).to(torch.float32)
                         reference_embedding = torch.unsqueeze(reference_embedding, 0)
 
                     # calc the scores
                     for frame_num in np.arange(embeddings.shape[1]):
                         if frame_num >= num_frames_to_average_threshold:
-                            embeddings_to_calc = embeddings.iloc[embedding_values_indexes,
-                                                 frame_num - num_frames_to_average_threshold:frame_num]
+                            embeddings_to_calc = embeddings.iloc[:, frame_num - num_frames_to_average_threshold:frame_num]
                             embedding_to_calc = embeddings_to_calc.mean(axis=1)
                             embedding_to_calc = (embedding_to_calc.reset_index()).iloc[:, 1]
                             embedding_to_calc_tensor = (torch.tensor(embedding_to_calc)).to(torch.float32)

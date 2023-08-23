@@ -67,7 +67,6 @@ trained_model_name_dict = {
 }
 
 # input size for the NeuralNetwork. Default is embeddings from dinov2_vitb14 with size of 768
-embedding_model_name = "dinov2_vitb14"
 embedding_size = 768
 embedding_format = "embeddings_only"
 
@@ -110,7 +109,7 @@ if __name__ == "__main__":
             trained_model.load_state_dict(torch.load(trained_model_path))
             trained_model.cuda()
             trained_model.eval()
-            embedding_model = get_model(embedding_model_name)
+            embedding_model = get_model(embedding_model)
             embedding_model.cuda()
             embedding_model.eval()
 

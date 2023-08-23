@@ -107,6 +107,10 @@ def generate_embeddings(file_name, model_name):
     saved_df.to_csv(result_csv_path, index=False)
     saved_df.to_excel(result_excel_path, index=None, header=False)
 
+    # remove csv file
+    cmd = 'rm ' + result_csv_path
+    subprocess.run(cmd, shell=True)
+
     print("Finished to generate embeddings of file name: {} \n".format(file_name))
 
 
