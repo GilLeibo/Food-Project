@@ -168,7 +168,9 @@ input_files_dict = {
                        "dinov2_vitb14_croissant_left_part", "dinov2_vitb14_egg_left_part",
                        "dinov2_vitb14_nachos_left_part", "dinov2_vitb14_pastry_left_part", "dinov2_vitb14_pizza1_left_part", "dinov2_vitb14_pizza2_left_part"],
     "pizzas": ["dinov2_vitb14_pizza1", "dinov2_vitb14_pizza2", "dinov2_vitb14_pizza3"],
-    "pizzas_left_parts": ["dinov2_vitb14_pizza1_left_part", "dinov2_vitb14_pizza2_left_part", "dinov2_vitb14_pizza3_left_part"]
+    "pizzas_left_parts": ["dinov2_vitb14_pizza1_left_part", "dinov2_vitb14_pizza2_left_part", "dinov2_vitb14_pizza3_left_part"],
+    "cheese_sandwich_left_part": ["dinov2_vitb14_cheese_sandwich_left_part"],
+    "pastry_left_part": ["dinov2_vitb14_pastry_left_part"]
 }
 
 
@@ -176,7 +178,7 @@ if __name__ == "__main__":
 
     # configure settings
     embedding_format_keys = ["2", "4"]
-    input_formats = ["self_videos", "youtube_videos", "all_videos", "youtube_videos_left_parts", "pizzas", "pizzas_left_parts"]
+    input_formats = ["self_videos", "youtube_videos", "all_videos", "youtube_videos_left_parts", "pizzas", "pizzas_left_parts", "cheese_sandwich_left_part", "pastry_left_part"]
     learning_rates = [0.01, 0.02, 0.04, 0.06, 0.08, 0.1]
     n_epochs_list = [500, 600, 700]
     test_set_size = 0.25  # portion of test_set size from dataset
