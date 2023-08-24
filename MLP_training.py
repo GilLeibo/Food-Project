@@ -180,7 +180,7 @@ if __name__ == "__main__":
     embedding_format_keys = ["2", "4"]
     input_formats = ["self_videos", "youtube_videos", "all_videos", "youtube_videos_left_parts", "pizzas", "pizzas_left_parts", "cheese_sandwich_left_part", "pastry_left_part"]
     learning_rates = [0.01, 0.02, 0.04, 0.06, 0.08, 0.1]
-    n_epochs_list = [500, 600, 700]
+    n_epochs_list = [500, 600, 700, 800]
     test_set_size = 0.25  # portion of test_set size from dataset
     batch_size = 100  # size of each batch
     gap_to_prediction_frame = 450  # gap (in frames) to prediction frame
