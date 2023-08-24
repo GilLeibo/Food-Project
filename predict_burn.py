@@ -8,6 +8,9 @@ import torchvision.transforms as T
 from tqdm import tqdm
 from sklearn.metrics.pairwise import cosine_similarity
 import subprocess
+import numpy as np
+from sklearn import metrics
+import matplotlib.pyplot as plt
 
 
 class NeuralNetwork(nn.Module):
@@ -46,6 +49,37 @@ def get_model(model_name):
             return dinov2_vitg14
 
 
+def rgb2hsv_torch(rgb: torch.Tensor) -> torch.Tensor:
+    cmax, cmax_idx = torch.max(rgb, dim=1, keepdim=True)
+    cmin = torch.min(rgb, dim=1, keepdim=True)[0]
+    delta = cmax - cmin
+    hsv_h = torch.empty_like(rgb[:, 0:1, :, :])
+    cmax_idx[delta == 0] = 3
+    hsv_h[cmax_idx == 0] = (((rgb[:, 1:2] - rgb[:, 2:3]) / delta) % 6)[cmax_idx == 0]
+    hsv_h[cmax_idx == 1] = (((rgb[:, 2:3] - rgb[:, 0:1]) / delta) + 2)[cmax_idx == 1]
+    hsv_h[cmax_idx == 2] = (((rgb[:, 0:1] - rgb[:, 1:2]) / delta) + 4)[cmax_idx == 2]
+    hsv_h[cmax_idx == 3] = 0.
+    hsv_h /= 6.
+    hsv_s = torch.where(cmax == 0, torch.tensor(0.).type_as(rgb), delta / cmax)
+    hsv_v = cmax
+    return torch.cat([hsv_h, hsv_s, hsv_v], dim=1)
+
+
+def add_means_to_embedding(cropped_img, embedding):
+    img = cropped_img.float()
+    img_hsv = torch.squeeze(rgb2hsv_torch(torch.unsqueeze(img, 0)))  # convert img to hsv format
+    r, g, b = torch.mean(img, dim=[1, 2])  # calc mean of r,g,b values from img
+    h, s, v = torch.mean(img_hsv, dim=[1, 2])  # calc mean of h,s,v values from img_hsv
+
+    # add mean values to embedding vector
+    for channel_mean in [r, g, b]:
+        embedding = pd.concat([embedding, pd.Series(channel_mean.numpy(), dtype=np.dtype("float"))])
+    for hsv_mean in [h, s, v]:
+        embedding = pd.concat([embedding, pd.Series(hsv_mean.numpy(), dtype=np.dtype("float"))])
+
+    return embedding
+
+
 def calc_score(metric, vector1, vector2):
     match metric:
         case "L1_norm":
@@ -60,53 +94,113 @@ def calc_score(metric, vector1, vector2):
             return (cosine_similarity(vector1, vector2)).item()
 
 
-trained_model_name_dict = {
-    "self_videos": "embeddings_only_self_videos.zip",
-    "youtube_videos": "embeddings_only_youtube_videos.zip",
-    "all_videos": "embeddings_only_all_videos.zip"
-}
+def get_embeddings_indexes(random_values, embedding_format):
+    match embedding_format:
+        case "embeddings_only":
+            return random_values
+        case "embedding_hsv":
+            new_indexes = random_values
+            for hsv_index in hsv_indexes:
+                new_indexes.append(hsv_index)
+            return new_indexes
+        case "hsv":
+            return hsv_indexes
 
-# input size for the NeuralNetwork. Default is embeddings from dinov2_vitb14 with size of 768
-embedding_size = 768
-embedding_format = "embeddings_only"
+
+def get_values_according2_embedding_format(df, embedding_format):
+    embeddings_features = df.iloc[:-6, :]
+    rgb_features = df.iloc[-6:-3, :]
+    hsv_features = df.iloc[-3:, :]
+
+    match embedding_format:
+        case "full_embeddings":
+            return df
+        case "embeddings_only":
+            return embeddings_features
+        case "embedding_rgb":
+            return pd.concat([embeddings_features, rgb_features], axis=0)
+        case "embedding_hsv":
+            return pd.concat([embeddings_features, hsv_features], axis=0)
+        case "rgb_hsv":
+            return pd.concat([rgb_features, hsv_features], axis=0)
+        case "rgb":
+            return rgb_features
+        case "hsv":
+            return hsv_features
+
+
+def plot_roc_curve(roc_curve_figure_path, input_format, file_to_predict):
+    plt.plot([0, 1], [0, 1], '--')
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.title('ROC Curve\n Input: {}, File to predict: '.format(input_format, file_to_predict))
+    lgd = plt.legend(bbox_to_anchor=(1.04, 0), loc="lower left")
+    plt.savefig(roc_curve_figure_path, bbox_extra_artists=(lgd,), bbox_inches='tight')
+    plt.close()
+
+
+hsv_indexes = [771, 772, 773]
+
+# TODO: ["cheese", "pizza3", "pizza4", "sandwich", "egg1_full", "pancake1_zoomed"]
+input_formats_dict = {
+    "all_videos": ("pizzas_left_parts_embedding_hsv_lr0.01_epochs500.zip",
+                   "pizzas_left_parts_embedding_hsv_extended_reference_embedding.xlsx", "embedding_hsv",
+                   "cosine_similarity", 0.1,
+                   [("pizza3_left_part", 20)])
+}
 
 if __name__ == "__main__":
 
     # configure settings
-    input_format = "all_videos"
+    input_formats = ["all_videos"]
     embedding_model = "dinov2_vitb14"
     gap_to_calc_embedding = 90
     num_frames_to_average_threshold = 50
 
+    # assertion is needed to make calculation of average threshold possible
     assert gap_to_calc_embedding >= num_frames_to_average_threshold
 
-    # init values
-    trained_model_name = trained_model_name_dict.get(input_format)
-    trained_model_path = "/home/gilnetanel/Desktop/trained_models/" + trained_model_name
+    # read from Excel the random values to use as indexes for the embeddings
+    random_values_excel_path = '/home/gilnetanel/Desktop/random_values/random_values.xlsx'
+    random_values = pd.read_excel(random_values_excel_path, header=0, names=["threshold"], index_col=None, usecols=[1])
+    random_values = random_values["threshold"].tolist()
 
-    # read reference embedding
-    reference_embedding_excel_path = ("/home/gilnetanel/Desktop/ROC/" + input_format + "/" + embedding_model + "_"
-                                      + input_format + "_extended_reference_embedding.xlsx")
-    reference_embedding = (pd.read_excel(reference_embedding_excel_path, header=None)).transpose()
-    reference_embedding = (torch.tensor(reference_embedding.values)).to(torch.float32)
+    # iterate all input_formats
+    for input_format in input_formats:
 
-    for metric, threshold in zip(["L2_norm", "cosine_similarity"], [18.307222366333, 0.465407758951187]):
-
-        # delete old directories and create new ones
-        cmd1 = 'rm -r /home/gilnetanel/Desktop/predict/' + metric
-        cmd2 = 'mkdir -p /home/gilnetanel/Desktop/predict/' + metric
+        # remove corresponding input_format folder if exists
+        cmd1 = 'rm -r /home/gilnetanel/Desktop/predict/' + input_format
+        cmd2 = 'mkdir -p /home/gilnetanel/Desktop/predict/' + input_format
         subprocess.run(cmd1, shell=True)
         subprocess.run(cmd2, shell=True)
 
-        for input_file in ["cheese", "pizza3", "pizza4", "sandwich", "egg1_full", "pancake1_zoomed"]:
-            input_file_path = "/home/gilnetanel/Desktop/input/" + input_file + ".mp4"
+        # get input_format configuration
+        trained_model_name, reference_embedding_name, embedding_format, metric, threshold, files_to_predict_metadata = input_formats_dict.get(
+            input_format)
+
+        # init
+        trained_model_path = "/home/gilnetanel/Desktop/predict/" + trained_model_name
+        trained_model_loaded = torch.load(trained_model_path)
+        reference_embedding_excel_path = "/home/gilnetanel/Desktop/predict/" + reference_embedding_name
+        reference_embedding = (pd.read_excel(reference_embedding_excel_path, header=None)).transpose()
+        reference_embedding = (torch.tensor(reference_embedding.values)).to(torch.float32)
+        embeddings_indexes = get_embeddings_indexes(random_values, embedding_format)
+        embedding_size = len(embeddings_indexes)
+
+        # iterate over files to predict
+        for file_to_predict, time_burned in files_to_predict_metadata:
+
+            found_burned_frame = False
+            scores = []
+            future_embeddings_size = 0
+            file_to_predict_path = "/home/gilnetanel/Desktop/input/" + file_to_predict + ".mp4"
 
             # cuda memory handling:
             torch.cuda.empty_cache()
 
             # load models and move to cuda
             trained_model = NeuralNetwork()
-            trained_model.load_state_dict(torch.load(trained_model_path))
+            trained_model.load_state_dict(trained_model_loaded)
             trained_model.cuda()
             trained_model.eval()
             embedding_model = get_model(embedding_model)
@@ -115,8 +209,10 @@ if __name__ == "__main__":
 
             # load video and get frames
             torchvision.set_video_backend("pyav")
-            video_path = input_file_path
+            video_path = file_to_predict_path
             video = torchvision.io.VideoReader(video_path, "video")
+            video_fps = (video.get_metadata().get('video')).get('fps')[0]
+            time_burned_frame_index = int(time_burned * video_fps)
 
             # the dataframes to collect embeddings
             embeddings = pd.DataFrame()
@@ -143,11 +239,26 @@ if __name__ == "__main__":
                 embedding = pd.DataFrame(embedding.cpu().detach().numpy()).transpose()
                 ready_frame.cpu()
 
+                # add rgb, hsv to embedding vector
+                embedding = add_means_to_embedding(cropped_img, embedding)
+
+                # fix indexes
+                embedding = embedding.transpose()
+                new_col = np.arange(embedding.shape[1]).tolist()
+                embedding.columns = new_col
+                embedding = embedding.transpose()
+
+                # modify embedding according to configuration
+                embedding = get_values_according2_embedding_format(embedding, embedding_format)
+                embedding = embedding.loc[embeddings_indexes]
+
                 # concat embedding to embeddings dataFrame
                 embeddings = pd.concat([embeddings, embedding], axis=1)
+
+                # start calculation when have enough gap
                 if frame_num >= gap_to_calc_embedding:
 
-                    # get embedding to do calc differentiation vector
+                    # get embedding corresponding to gap_to_calc_embedding to calc differentiation embedding
                     differentiation_embedding_frame = frame_num - gap_to_calc_embedding
                     embedding2 = embeddings.iloc[:, differentiation_embedding_frame]
 
@@ -157,15 +268,17 @@ if __name__ == "__main__":
                     merged_embedding = pd.concat([embedding, differences_embedding], axis=0)
                     X = torch.transpose((torch.tensor(merged_embedding.to_numpy())).to(torch.float32), 0, 1)
 
-                    # predict
+                    # predict future_embedding
                     future_embedding = trained_model(X.cuda())
 
-                    # concat
+                    # concat future_embedding to future_embeddings
                     future_embedding = pd.DataFrame(future_embedding.cpu().detach().numpy()).transpose()
                     future_embeddings = pd.concat([future_embeddings, future_embedding], axis=1)
 
                     # calc future_embeddings score
                     future_embeddings_size = future_embeddings.shape[1]
+
+                    # calc average when have enough future_embeddings
                     if future_embeddings_size >= num_frames_to_average_threshold:
 
                         embeddings_for_score = future_embeddings.iloc[:,
@@ -174,13 +287,31 @@ if __name__ == "__main__":
                         embeddings_for_score = (torch.tensor(embeddings_for_score)).to(torch.float32)
                         embeddings_for_score = torch.unsqueeze(embeddings_for_score, 0)
                         score = calc_score(metric, reference_embedding, embeddings_for_score)
+                        scores.append(score)
 
-                        if (metric == "cosine_similarity" and score >= threshold) or (metric == "L2_norm" and score <= threshold):
-                            # show frame:
+                        if ((metric == "cosine_similarity" and score >= threshold) or (
+                                metric == "L2_norm" and score <= threshold)) and found_burned_frame is False:
+
                             img = torchvision.transforms.ToPILImage()(frame['data'])
                             # img.show()
-                            image_save_path = ("/home/gilnetanel/Desktop/predict/" + metric + "/" + input_format + "_" +
-                                               metric + "_" + input_file + "_" + str(frame_num) + ".png")
+                            image_save_path = ("/home/gilnetanel/Desktop/predict/" + input_format + "/" +
+                                               file_to_predict + "_" + str(frame_num) + ".png")
                             img.save(image_save_path)
-                            print("Burned frame for file_name {} using metric {} is: {}.".format(input_file, metric, frame_num))
-                            break
+                            print(
+                                "First burned frame for file_to_predict {} is: {}.".format(file_to_predict, frame_num))
+                            found_burned_frame = True
+
+            # calc true_values
+            true_values = np.array([])
+            true_values = np.append(true_values,
+                                    np.zeros(
+                                        time_burned_frame_index - gap_to_calc_embedding - num_frames_to_average_threshold))
+            true_values = np.append(true_values,
+                                    np.ones(future_embeddings_size - time_burned_frame_index))
+
+            # calc ROC and plot graph
+            fpr, tpr, thresholds = metrics.roc_curve(true_values, np.array(scores))
+            roc_curve_figure_path = '/home/gilnetanel/Desktop/predict/' + input_format + "/" + input_format + "_" + file_to_predict + "_roc_curve.png"
+            plot_roc_curve(roc_curve_figure_path, input_format, file_to_predict)
+            print("Saved {} {} ROC Figure".format(input_format, file_to_predict))
+

@@ -1,13 +1,13 @@
+import subprocess
+
+import matplotlib.pyplot as plt
 import numpy
 import numpy as np
 import pandas as pd
+import torch
 import torchvision
 from sklearn import metrics
-import matplotlib.pyplot as plt
-import subprocess
-import torch
 from sklearn.metrics.pairwise import cosine_similarity
-import random
 
 
 def get_reference_embedding(input_format, embedding_model, embedding_format, roc_curve_input_format_path, embeddings_indexes):
