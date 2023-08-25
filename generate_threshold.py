@@ -88,7 +88,7 @@ def get_embeddings_indexes(random_values, embedding_format):
         case "embeddings_only":
             return random_values
         case "embedding_hsv":
-            new_indexes = random_values
+            new_indexes = random_values.copy()
             for hsv_index in hsv_indexes:
                 new_indexes.append(hsv_index)
             return new_indexes

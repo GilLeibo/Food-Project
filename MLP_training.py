@@ -107,7 +107,7 @@ def get_embeddings_indexes(random_values, embedding_format):
         case "embeddings_only":
             return random_values
         case "embedding_hsv":
-            new_indexes = random_values
+            new_indexes = random_values.copy()
             for hsv_index in hsv_indexes:
                 new_indexes.append(hsv_index)
             return new_indexes
@@ -226,14 +226,16 @@ if __name__ == "__main__":
             model = NeuralNetwork()
             model.cuda()
 
-            # loss
-            loss_func = nn.CosineEmbeddingLoss()
-
             # iterate n_epochs
             for n_epochs in n_epochs_list:
 
                 # iterate learning_rates
                 for lr in learning_rates:
+
+                    print("Started training of: {} {} {} {}".format(input_format, embedding_format, n_epochs, lr))
+
+                    # loss
+                    loss_func = nn.CosineEmbeddingLoss()
 
                     # optimizer
                     optimizer = torch.optim.SGD(model.parameters(), lr=lr, momentum=0.9)

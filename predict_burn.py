@@ -99,7 +99,7 @@ def get_embeddings_indexes(random_values, embedding_format):
         case "embeddings_only":
             return random_values
         case "embedding_hsv":
-            new_indexes = random_values
+            new_indexes = random_values.copy()
             for hsv_index in hsv_indexes:
                 new_indexes.append(hsv_index)
             return new_indexes
@@ -129,13 +129,13 @@ def get_values_according2_embedding_format(df, embedding_format):
             return hsv_features
 
 
-def plot_roc_curve(roc_curve_figure_path, input_format, file_to_predict):
+def plot_roc_curve(roc_curve_figure_path, input_format, file_to_predict, fpr, tpr):
     plt.plot([0, 1], [0, 1], '--')
+    plt.plot(fpr, tpr)
     plt.xlabel('False Positive Rate')
     plt.ylabel('True Positive Rate')
-    plt.title('ROC Curve\n Input: {}, File to predict: '.format(input_format, file_to_predict))
-    lgd = plt.legend(bbox_to_anchor=(1.04, 0), loc="lower left")
-    plt.savefig(roc_curve_figure_path, bbox_extra_artists=(lgd,), bbox_inches='tight')
+    plt.title('ROC Curve\n Input: {}, File to predict: {}'.format(input_format, file_to_predict))
+    plt.savefig(roc_curve_figure_path)
     plt.close()
 
 
@@ -279,10 +279,11 @@ if __name__ == "__main__":
                     future_embeddings_size = future_embeddings.shape[1]
 
                     # calc average when have enough future_embeddings
-                    if future_embeddings_size >= num_frames_to_average_threshold:
+                    if future_embeddings_size > num_frames_to_average_threshold:
 
+                        index_in_future_embeddings_to_calc_score = future_embeddings_size - 1
                         embeddings_for_score = future_embeddings.iloc[:,
-                                               future_embeddings_size - num_frames_to_average_threshold:future_embeddings_size]
+                                               index_in_future_embeddings_to_calc_score - num_frames_to_average_threshold:index_in_future_embeddings_to_calc_score]
                         embeddings_for_score = embeddings_for_score.mean(axis=1)
                         embeddings_for_score = (torch.tensor(embeddings_for_score)).to(torch.float32)
                         embeddings_for_score = torch.unsqueeze(embeddings_for_score, 0)
@@ -291,7 +292,6 @@ if __name__ == "__main__":
 
                         if ((metric == "cosine_similarity" and score >= threshold) or (
                                 metric == "L2_norm" and score <= threshold)) and found_burned_frame is False:
-
                             img = torchvision.transforms.ToPILImage()(frame['data'])
                             # img.show()
                             image_save_path = ("/home/gilnetanel/Desktop/predict/" + input_format + "/" +
@@ -307,11 +307,10 @@ if __name__ == "__main__":
                                     np.zeros(
                                         time_burned_frame_index - gap_to_calc_embedding - num_frames_to_average_threshold))
             true_values = np.append(true_values,
-                                    np.ones(future_embeddings_size - time_burned_frame_index))
+                                    np.ones(embeddings.shape[1] - time_burned_frame_index))
 
             # calc ROC and plot graph
             fpr, tpr, thresholds = metrics.roc_curve(true_values, np.array(scores))
             roc_curve_figure_path = '/home/gilnetanel/Desktop/predict/' + input_format + "/" + input_format + "_" + file_to_predict + "_roc_curve.png"
-            plot_roc_curve(roc_curve_figure_path, input_format, file_to_predict)
+            plot_roc_curve(roc_curve_figure_path, input_format, file_to_predict, fpr, tpr)
             print("Saved {} {} ROC Figure".format(input_format, file_to_predict))
-
