@@ -290,8 +290,10 @@ if __name__ == "__main__":
                         score = calc_score(metric, reference_embedding, embeddings_for_score)
                         scores.append(score)
 
-                        if ((metric == "cosine_similarity" and score >= threshold) or (
-                                metric == "L2_norm" and score <= threshold)) and found_burned_frame is False:
+                        if (((metric == "cosine_similarity" and score >= threshold)
+                             or (metric == "L2_norm" and score <= threshold)
+                             or (metric == "L1_norm" and score <= threshold))
+                                and found_burned_frame is False):
                             img = torchvision.transforms.ToPILImage()(frame['data'])
                             # img.show()
                             image_save_path = ("/home/gilnetanel/Desktop/predict/" + input_format + "/" +
@@ -311,6 +313,13 @@ if __name__ == "__main__":
 
             # calc ROC and plot graph
             fpr, tpr, thresholds = metrics.roc_curve(true_values, np.array(scores))
+
+            # transpose ROC values if needed
+            if metric == "L1_norm" or metric == "L2_norm":
+                temp = fpr
+                fpr = tpr
+                tpr = temp
+
             roc_curve_figure_path = '/home/gilnetanel/Desktop/predict/' + input_format + "/" + input_format + "_" + file_to_predict + "_roc_curve.png"
             plot_roc_curve(roc_curve_figure_path, input_format, file_to_predict, fpr, tpr)
             print("Saved {} {} ROC Figure".format(input_format, file_to_predict))

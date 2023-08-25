@@ -222,10 +222,6 @@ if __name__ == "__main__":
             train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
             test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
 
-            # creates model instance and move it to cuda
-            model = NeuralNetwork()
-            model.cuda()
-
             # iterate n_epochs
             for n_epochs in n_epochs_list:
 
@@ -233,6 +229,10 @@ if __name__ == "__main__":
                 for lr in learning_rates:
 
                     print("Started training of: {} {} {} {}".format(input_format, embedding_format, n_epochs, lr))
+
+                    # creates model instance and move it to cuda
+                    model = NeuralNetwork()
+                    model.cuda()
 
                     # loss
                     loss_func = nn.CosineEmbeddingLoss()

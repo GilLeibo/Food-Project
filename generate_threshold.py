@@ -147,6 +147,8 @@ videos_time_burned_dict = {
                                   "nachos_left_part": 55, "pastry_left_part": 50, "pizza1_left_part": 55, "pizza2_left_part": 50},
     "pizzas": {"pizza1": 55, "pizza2": 50, "pizza3": 50},
     "pizzas_left_parts": {"pizza1_left_part": 55, "pizza2_left_part": 50, "pizza3_left_part": 50},
+    "cheese_sandwich_left_part": {"cheese_sandwich_left_part": 50},
+    "pastry_left_part": {"pastry_left_part": 50}
 
 }
 
@@ -155,8 +157,8 @@ if __name__ == '__main__':
     embedding_model = "dinov2_vitb14"
     embedding_format_keys = ["2", "4"]
     reference_embedding_formats = [
-        "extended"]  # separate - separate reference embedding for each file, extended - reference embedding is the same for all files and consists of mean of all files
-    input_formats = ["self_videos", "youtube_videos", "all_videos", "youtube_videos_left_parts", "pizzas", "pizzas_left_parts"]
+        "extended", "separate"]  # separate - separate reference embedding for each file, extended - reference embedding is the same for all files and consists of mean of all files
+    input_formats = ["self_videos", "youtube_videos", "all_videos", "youtube_videos_left_parts", "pizzas", "pizzas_left_parts", "cheese_sandwich_left_part", "pastry_left_part"]
     num_frames_to_average_threshold = 50
 
     # scores
@@ -247,6 +249,12 @@ if __name__ == '__main__':
                                           [L1_scores, L2_scores, cosine_scores]):
                     # calc roc_curve values
                     fpr, tpr, thresholds = metrics.roc_curve(true_values, np.array(scores))
+
+                    # transpose ROC values if needed
+                    if metric == "L1_norm" or metric == "L2_norm":
+                        temp = fpr
+                        fpr = tpr
+                        tpr = temp
 
                     # save values to Excel file
                     roc_curve_excel_path = (
