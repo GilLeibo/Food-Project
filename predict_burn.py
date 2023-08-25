@@ -143,16 +143,16 @@ hsv_indexes = [771, 772, 773]
 
 # TODO: ["cheese", "pizza3", "pizza4", "sandwich", "egg1_full", "pancake1_zoomed"]
 input_formats_dict = {
-    "all_videos": ("pizzas_left_parts_embedding_hsv_lr0.01_epochs500.zip",
-                   "pizzas_left_parts_embedding_hsv_extended_reference_embedding.xlsx", "embedding_hsv",
-                   "cosine_similarity", 0.1,
-                   [("pizza3_left_part", 20)])
+    "self_videos": ("self_videos_embeddings_only_lr0.1_epochs800.zip",
+                   "self_videos_embeddings_only_extended_reference_embedding.xlsx", "embeddings_only",
+                   "cosine_similarity", 0.918489515781403,
+                   [("egg1_full", 150)])
 }
 
 if __name__ == "__main__":
 
     # configure settings
-    input_formats = ["all_videos"]
+    input_formats = ["self_videos"]
     embedding_model = "dinov2_vitb14"
     gap_to_calc_embedding = 90
     num_frames_to_average_threshold = 50
