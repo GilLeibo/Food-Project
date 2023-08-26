@@ -145,14 +145,42 @@ hsv_indexes = [771, 772, 773]
 input_formats_dict = {
     "self_videos": ("self_videos_embeddings_only_lr0.1_epochs800.zip",
                    "self_videos_embeddings_only_extended_reference_embedding.xlsx", "embeddings_only",
-                   "cosine_similarity", 0.918489515781403,
-                   [("egg1_full", 150)])
+                   "cosine_similarity", 0.949752032756805,
+                   [("egg1_full", 150), ("pancake1_zoomed", 100)]),
+    "youtube_videos": ("youtube_videos_embedding_hsv_lr0.04_epochs800.zip",
+                       "youtube_videos_embedding_hsv_extended_reference_embedding.xlsx", "embedding_hsv",
+                       "L1_norm", 30.6438903808594,
+                       [("cheese", 45), ("sandwich", 22), ("pizza3", 50), ("pizza4", 58)]),
+    "all_videos": ("all_videos_embedding_hsv_lr0.07_epochs800.zip",
+                           "all_videos_embedding_hsv_extended_reference_embedding.xlsx", "embedding_hsv",
+                           "L1_norm", 35.146598815918,
+                           [("cheese", 45), ("sandwich", 22), ("pizza3", 50), ("pizza4", 58), ("egg1_full", 150), ("pancake1_zoomed", 100)]),
+    "youtube_videos_left_parts": ("youtube_videos_left_parts_embedding_hsv_lr0.1_epochs500.zip",
+                               "youtube_videos_left_parts_embedding_hsv_extended_reference_embedding.xlsx", "embedding_hsv",
+                               "L1_norm", 34.6381912231445,
+                               [("cheese_right_part", 45), ("sandwich_right_part", 22), ("pizza3_right_part", 50), ("pizza4_right_part", 58)]),
+    "pizzas": ("pizzas_embedding_hsv_lr0.07_epochs500.zip",
+                                   "pizzas_embedding_hsv_extended_reference_embedding.xlsx", "embedding_hsv",
+                                   "L1_norm", 33.2832984924316,
+                                   [("pizza4", 58)]),
+    "pizzas_left_parts": ("pizzas_left_parts_embedding_hsv_lr0.07_epochs800.zip",
+                                       "pizzas_left_parts_embedding_hsv_extended_reference_embedding.xlsx", "embedding_hsv",
+                                       "L1_norm", 32.8992156982422,
+                                       [("pizza4_right_part", 58)]),
+    "cheese_sandwich_left_part": ("cheese_sandwich_left_part_embedding_hsv_lr0.07_epochs800.zip",
+                                           "cheese_sandwich_left_part_embedding_hsv_extended_reference_embedding.xlsx", "embedding_hsv",
+                                           "L1_norm", 31.8805408477783,
+                                           [("cheese_sandwich_right_part", 50)]),
+    "pastry_left_part": ("pastry_left_part_embedding_hsv_lr0.1_epochs800.zip",
+                                               "pastry_left_part_embedding_hsv_extended_reference_embedding.xlsx", "embedding_hsv",
+                                               "L1_norm", 31.7435970306396,
+                                               [("pastry_right_part", 50)])
 }
 
 if __name__ == "__main__":
 
     # configure settings
-    input_formats = ["self_videos"]
+    input_formats = ["self_videos", "youtube_videos", "all_videos", "youtube_videos_left_parts", "pizzas", "pizzas_left_parts", "cheese_sandwich_left_part", "pastry_left_part"]
     embedding_model = "dinov2_vitb14"
     gap_to_calc_embedding = 90
     num_frames_to_average_threshold = 50
