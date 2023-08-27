@@ -139,6 +139,15 @@ def plot_roc_curve(roc_curve_figure_path, input_format, file_to_predict, fpr, tp
     plt.close()
 
 
+def plot_scores(score_curve_figure_path, input_format, file_to_predict, scores):
+    plt.plot(np.arange(len(scores)), scores)
+    plt.xlabel('Frame')
+    plt.ylabel('Score')
+    plt.title('Scores\n Input: {}, File to predict: {}'.format(input_format, file_to_predict))
+    plt.savefig(score_curve_figure_path)
+    plt.close()
+
+
 hsv_indexes = [771, 772, 773]
 
 # TODO: ["cheese", "pizza3", "pizza4", "sandwich", "egg1_full", "pancake1_zoomed"]
@@ -149,31 +158,31 @@ input_formats_dict = {
                    [("egg1_full", 150), ("pancake1_zoomed", 100)]),
     "youtube_videos": ("youtube_videos_embedding_hsv_lr0.04_epochs800.zip",
                        "youtube_videos_embedding_hsv_extended_reference_embedding.xlsx", "embedding_hsv",
-                       "L1_norm", 30.6438903808594,
+                       "cosine_similarity", 0.98322993516922,
                        [("cheese", 45), ("sandwich", 22), ("pizza3", 50), ("pizza4", 58)]),
     "all_videos": ("all_videos_embedding_hsv_lr0.07_epochs800.zip",
                            "all_videos_embedding_hsv_extended_reference_embedding.xlsx", "embedding_hsv",
-                           "L1_norm", 35.146598815918,
+                           "L1_norm", 48.3728485107422,
                            [("cheese", 45), ("sandwich", 22), ("pizza3", 50), ("pizza4", 58), ("egg1_full", 150), ("pancake1_zoomed", 100)]),
     "youtube_videos_left_parts": ("youtube_videos_left_parts_embedding_hsv_lr0.1_epochs500.zip",
                                "youtube_videos_left_parts_embedding_hsv_extended_reference_embedding.xlsx", "embedding_hsv",
-                               "L1_norm", 34.6381912231445,
+                               "L1_norm", 48.3728485107422,
                                [("cheese_right_part", 45), ("sandwich_right_part", 22), ("pizza3_right_part", 50), ("pizza4_right_part", 58)]),
     "pizzas": ("pizzas_embedding_hsv_lr0.07_epochs500.zip",
                                    "pizzas_embedding_hsv_extended_reference_embedding.xlsx", "embedding_hsv",
-                                   "L1_norm", 33.2832984924316,
+                                   "L1_norm", 48.3728485107422,
                                    [("pizza4", 58)]),
     "pizzas_left_parts": ("pizzas_left_parts_embedding_hsv_lr0.07_epochs800.zip",
                                        "pizzas_left_parts_embedding_hsv_extended_reference_embedding.xlsx", "embedding_hsv",
-                                       "L1_norm", 32.8992156982422,
+                                       "L1_norm", 48.3728485107422,
                                        [("pizza4_right_part", 58)]),
     "cheese_sandwich_left_part": ("cheese_sandwich_left_part_embedding_hsv_lr0.07_epochs800.zip",
                                            "cheese_sandwich_left_part_embedding_hsv_extended_reference_embedding.xlsx", "embedding_hsv",
-                                           "L1_norm", 31.8805408477783,
+                                           "L1_norm", 48.3728485107422,
                                            [("cheese_sandwich_right_part", 50)]),
     "pastry_left_part": ("pastry_left_part_embedding_hsv_lr0.1_epochs800.zip",
                                                "pastry_left_part_embedding_hsv_extended_reference_embedding.xlsx", "embedding_hsv",
-                                               "L1_norm", 31.7435970306396,
+                                               "L1_norm", 48.3728485107422,
                                                [("pastry_right_part", 50)])
 }
 
@@ -181,7 +190,7 @@ if __name__ == "__main__":
 
     # configure settings
     input_formats = ["self_videos", "youtube_videos", "all_videos", "youtube_videos_left_parts", "pizzas", "pizzas_left_parts", "cheese_sandwich_left_part", "pastry_left_part"]
-    embedding_model = "dinov2_vitb14"
+    embedding_model_name = "dinov2_vitb14"
     gap_to_calc_embedding = 90
     num_frames_to_average_threshold = 50
 
@@ -192,6 +201,11 @@ if __name__ == "__main__":
     random_values_excel_path = '/home/gilnetanel/Desktop/random_values/random_values.xlsx'
     random_values = pd.read_excel(random_values_excel_path, header=0, names=["threshold"], index_col=None, usecols=[1])
     random_values = random_values["threshold"].tolist()
+
+    # load models and move to cuda
+    embedding_model = get_model(embedding_model_name)
+    embedding_model.cuda()
+    embedding_model.eval()
 
     # iterate all input_formats
     for input_format in input_formats:
@@ -231,9 +245,6 @@ if __name__ == "__main__":
             trained_model.load_state_dict(trained_model_loaded)
             trained_model.cuda()
             trained_model.eval()
-            embedding_model = get_model(embedding_model)
-            embedding_model.cuda()
-            embedding_model.eval()
 
             # load video and get frames
             torchvision.set_video_backend("pyav")
@@ -351,3 +362,7 @@ if __name__ == "__main__":
             roc_curve_figure_path = '/home/gilnetanel/Desktop/predict/' + input_format + "/" + input_format + "_" + file_to_predict + "_roc_curve.png"
             plot_roc_curve(roc_curve_figure_path, input_format, file_to_predict, fpr, tpr)
             print("Saved {} {} ROC Figure".format(input_format, file_to_predict))
+
+            score_curve_figure_path = '/home/gilnetanel/Desktop/predict/' + input_format + "/" + input_format + "_" + file_to_predict + "_scores.png"
+            plot_scores(score_curve_figure_path, input_format, file_to_predict, scores)
+            print("Saved {} {} scores Figure".format(input_format, file_to_predict))
